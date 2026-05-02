@@ -14,7 +14,7 @@ To run this app on your computer and see your changes instantly, you will need *
 
 ### Launching the App
 1.  Open this project folder in VS Code.
-2.  Open the `index_22.html` file (or whichever is the current main HTML file).
+2.  Open the `index.html` file (or whichever is the current main HTML file).
 3.  Start the server using any of these methods:
     *   **Status Bar:** Click the `Go Live` button in the bottom right corner of VS Code.
     *   **Right-Click:** Right-click inside the HTML file code and select `Open with Live Server`.
