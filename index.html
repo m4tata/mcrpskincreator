@@ -141,7 +141,30 @@
 /* Resizer Handles */
 .resizer { width: 6px; background: rgba(255,255,255,0.1); cursor: ew-resize; position: absolute; top: 0; bottom: 0; z-index: 100; transition: background 0.2s; }
 .resizer:hover { background: #4CAF50; }
+
+/* Custom Asset Modal Styling */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(3px); z-index: 1000; }
+.modal-overlay.active { display: flex; justify-content: center; align-items: center; }
+.modal-container { background-color: #2f3640; border: 2px solid #7f8fa6; border-radius: 12px; padding: 25px; max-height: 85vh; overflow-y: auto; width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); }
+.modal-container h2 { margin-top: 0; color: #f5f6fa; font-size: 20px; margin-bottom: 20px; }
+.modal-form-group { margin-bottom: 18px; }
+.modal-form-group label { display: block; color: #7f8fa6; font-size: 13px; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; }
+.modal-form-group input[type="text"], .modal-form-group select { width: 100%; padding: 10px; background-color: #1e272e; color: #f5f6fa; border: 1px solid #7f8fa6; border-radius: 6px; font-size: 14px; }
+.modal-form-group input[type="text"]:focus, .modal-form-group select:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 6px rgba(76, 175, 80, 0.3); }
+
+.file-upload-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.file-upload-row label { color: #7f8fa6; font-size: 13px; font-weight: bold; white-space: nowrap; }
+.file-upload-row input[type="file"] { flex-grow: 1; }
+.tooltip-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background-color: #4CAF50; color: white; border-radius: 50%; font-size: 12px; font-weight: bold; cursor: help; position: relative; }
+.tooltip-icon:hover::after { content: attr(data-tooltip); position: absolute; right: 120%; left: auto; bottom: -50%; background-color: #1e272e; color: #f5f6fa; padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; width: 220px; font-size: 12px; font-weight: normal; z-index: 1001; border: 1px solid #7f8fa6; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8); }
+
+.modal-button-group { display: flex; gap: 10px; margin-top: 25px; }
+.modal-button-group button { flex: 1; padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background 0.2s; }
+.modal-button-group button:hover { background-color: #45a049; }
+.modal-button-group button.cancel { background-color: #7f8fa6; }
+.modal-button-group button.cancel:hover { background-color: #718093; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -160,6 +183,13 @@
             <button onclick="switchScreen('screen-head-cats')">Head</button>
             <button onclick="switchScreen('screen-body-cats')">Body</button>
             <button onclick="switchScreen('screen-fullbody-items', 'full_body')">Full Body</button>
+            <button onclick="switchScreen('screen-custom-assets', null)">Custom Assets</button>
+        </div>
+
+        <div id="screen-custom-assets" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-categories', 'base')">← Back to Categories</button>
+            <h2>Custom Assets</h2>
+            <div id="custom-asset-grid" class="equip-grid"></div>
         </div>
 
         <div id="screen-head-cats" class="ui-screen">
@@ -371,6 +401,10 @@
             <button id="export-layout-btn" onclick="exportLayout()" style="background-color: #3498db; width: auto; padding: 8px 12px;">📤 Export Layout</button>
             <button id="import-layout-btn" onclick="document.getElementById('import-file').click()" style="background-color: #9b59b6; width: auto; padding: 8px 12px;">📥 Import Layout</button>
             <input type="file" id="import-file" style="display: none;" accept=".json,.txt" onchange="importLayout(event)">
+            <button id="create-asset-btn" onclick="openAssetCreatorModal()" style="background-color: #ff8c00; width: auto; padding: 8px 12px;">🛠️ Create Custom Asset</button>
+            <button id="import-asset-btn" onclick="document.getElementById('import-asset-file').click()" style="background-color: #e91e63; width: auto; padding: 8px 12px;">📦 Import Asset</button>
+            <input type="file" id="import-asset-file" style="display: none;" accept=".zip" onchange="importCustomAsset(event)">
+            <input type="file" id="reimport-asset-input" style="display: none;" accept=".zip" onchange="handleReimportAsset(event)">
         </div>
 
         <canvas id="viewer_3d"></canvas>
@@ -426,6 +460,72 @@
         <h2 style="margin-bottom: 0px; font-size: 14px; color: #7f8fa6; letter-spacing: 1px;">EQUIPPED ITEMS</h2>
         <div id="equipped-list"></div>
         <div id="right-resizer" class="resizer" style="left: -3px;"></div>
+    </div>
+</div>
+
+<!-- Custom Asset Creator Modal -->
+<div id="asset-creator-modal" class="modal-overlay">
+    <div class="modal-container">
+        <h2>Create Custom Asset</h2>
+        
+        <div class="modal-form-group">
+            <label for="asset-name">Asset Name</label>
+            <input type="text" id="asset-name" placeholder="e.g., coolpants">
+        </div>
+        
+        <div class="modal-form-group">
+            <label for="asset-type">Asset Type</label>
+            <select id="asset-type">
+                <option value="">-- Select Type --</option>
+                <option value="hair">Hair</option>
+                <option value="facehair">Facial Hair</option>
+                <option value="eyes">Eyes</option>
+                <option value="eyebrows">Eyebrows</option>
+                <option value="mouth">Mouth</option>
+                <option value="facemarks">Face Marks</option>
+                <option value="head_acc">Head Accessory</option>
+                <option value="shirt">Shirt</option>
+                <option value="pants">Pants</option>
+                <option value="boots">Boots</option>
+                <option value="shirt_acc">Body Accessory</option>
+                <option value="full_body">Full Body</option>
+            </select>
+        </div>
+        
+        <div class="file-upload-row">
+            <label>Mask 1</label>
+            <input type="file" id="file-mask1" accept=".png">
+            <span class="tooltip-icon" data-tooltip="Defines the primary color area. Tip: Use grayscale; bright greys tint much better!">?</span>
+        </div>
+        
+        <div class="file-upload-row">
+            <label>Mask 2</label>
+            <input type="file" id="file-mask2" accept=".png">
+            <span class="tooltip-icon" data-tooltip="Defines the secondary color area. Tip: Great for trims, belts, or dual-tone items.">?</span>
+        </div>
+        
+        <div class="file-upload-row">
+            <label>Detail</label>
+            <input type="file" id="file-detail" accept=".png">
+            <span class="tooltip-icon" data-tooltip="Adds static, un-tintable details. Tip: Keep this transparent where you want the colored masks to show through.">?</span>
+        </div>
+        
+        <div class="file-upload-row">
+            <label>Exclude</label>
+            <input type="file" id="file-exclude" accept=".png">
+            <span class="tooltip-icon" data-tooltip="Erases pixels from items worn underneath. Tip: Use opaque pixels to punch a hole through lower layers to prevent z-fighting.">?</span>
+        </div>
+        
+        <div class="file-upload-row">
+            <label>Inclusion</label>
+            <input type="file" id="file-inclusion" accept=".png">
+            <span class="tooltip-icon" data-tooltip="Defines the safe rendering boundary. Tip: Only necessary if your item can be shifted up/down/left/right so it doesn't slide off the body.">?</span>
+        </div>
+        
+        <div class="modal-button-group">
+            <button onclick="exportCustomAsset()">Export Asset</button>
+            <button class="cancel" onclick="closeAssetCreatorModal()">Cancel</button>
+        </div>
     </div>
 </div>
 
@@ -1174,15 +1274,30 @@
         colors: { "base": "#f1c27d", "socks": "#ffffff", "pants": "#1e3799", "boots": "#8B4513", "shirt": "#e55039", "full_body": "#8e44ad", "mouth": "#f1c27d", "eyes": "#3498db", "eyebrows": "#2c3e50", "hair": "#2c3e50", "facehair": "#8B4513", "head_acc_eyelashes": "#000000", "shirt_2": "#feb44d", "pants_2": "#feb44d", "boots_2": "#feb44d", "socks_2": "#feb44d", "full_body_2": "#feb44d", "facehair_2": "#feb44d", "hair_2": "#feb44d" },
         offsets: {},
         flips: {},
-        flipOffsets: {}
+        flipOffsets: {},
+        customAssets: {}
     };
 
     // Cache for tracking which items have _mask2 files
     let mask2Cache = {};
 
+    // Global custom asset cache for imported assets
+    let customAssetCache = {};
+
     function loadImageAsync(url) {
         return new Promise((resolve) => {
-            let img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = url;
+            // Check if this file exists in the custom asset cache
+            if (customAssetCache[url]) {
+                let img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = customAssetCache[url];
+            } else {
+                let img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = url;
+            }
         });
     }
 
@@ -1315,6 +1430,22 @@
             itemDiv.className = "equipped-item";
             if (!canRemove) itemDiv.classList.add("equipped-base");
             
+            // Check if this is a missing custom asset
+            let assetName = charState.equipped[layerKey];
+            if (assetName && assetName.endsWith('.png')) {
+                assetName = assetName.replace('.png', '');
+            }
+            
+            let isCustom = charState.customAssets && charState.customAssets[assetName];
+            let isMissing = isCustom && !Object.keys(customAssetCache).some(k => k.startsWith(assetName + "_mask"));
+            
+            // Apply warning color if asset is missing
+            if (isMissing) {
+                itemDiv.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
+                itemDiv.style.borderColor = "#e74c3c";
+                itemDiv.style.borderWidth = "2px";
+            }
+            
             itemDiv.onclick = (e) => {
                 let mapData = getScreenMapData(layerKey);
                 if (mapData) {
@@ -1333,107 +1464,131 @@
             itemDiv.appendChild(nameSpan);
 
             if (canRemove) {
-                // Add color picker(s) if the item has a color
-                if (charState.colors[layerKey]) {
-                    const colorPickerWrapper = document.createElement("div");
-                    colorPickerWrapper.style.display = "flex";
-                    colorPickerWrapper.style.gap = "6px";
-                    colorPickerWrapper.addEventListener("click", (e) => e.stopPropagation());
-                    colorPickerWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
+                // If asset is missing, show reimport button instead of color pickers
+                if (isMissing) {
+                    const reimportBtn = document.createElement("button");
+                    reimportBtn.innerHTML = "⚠️ Reimport ZIP";
+                    reimportBtn.style.backgroundColor = "#e67e22";
+                    reimportBtn.style.padding = "4px 8px";
+                    reimportBtn.style.fontSize = "12px";
+                    reimportBtn.style.borderRadius = "4px";
+                    reimportBtn.style.color = "white";
+                    reimportBtn.style.border = "none";
+                    reimportBtn.style.cursor = "pointer";
+                    reimportBtn.style.fontWeight = "bold";
+                    reimportBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        // Trigger hidden file input for reimport
+                        window.pendingReimportAsset = {
+                            assetName: assetName,
+                            layerKey: layerKey
+                        };
+                        document.getElementById('reimport-asset-input').click();
+                    };
+                    itemDiv.appendChild(reimportBtn);
+                } else {
+                    // Normal color picker UI for non-missing assets
+                    // Add color picker(s) if the item has a color
+                    if (charState.colors[layerKey]) {
+                        const colorPickerWrapper = document.createElement("div");
+                        colorPickerWrapper.style.display = "flex";
+                        colorPickerWrapper.style.gap = "6px";
+                        colorPickerWrapper.addEventListener("click", (e) => e.stopPropagation());
+                        colorPickerWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
 
-                    const primaryPicker = document.createElement("input");
-                    primaryPicker.type = "color";
-                    primaryPicker.className = "box-picker";
-                    primaryPicker.style.width = "35px";
-                    primaryPicker.style.height = "35px";
-                    primaryPicker.style.padding = "0";
-                    primaryPicker.style.border = "none";
-                    primaryPicker.style.outline = "none";
-                    primaryPicker.style.borderRadius = "6px";
-                    primaryPicker.style.cursor = "pointer";
-                    primaryPicker.value = charState.colors[layerKey];
-                    primaryPicker.addEventListener("input", (e) => {
-                        charState.colors[layerKey] = e.target.value;
-                        renderSkin();
-                    });
-                    colorPickerWrapper.appendChild(primaryPicker);
-
-                    if (layerKey !== 'eyes' && layerKey !== 'eyebrows') {
-                        const secondaryPicker = document.createElement("input");
-                        secondaryPicker.type = "color";
-                        secondaryPicker.className = "box-picker";
-                        secondaryPicker.style.width = "35px";
-                        secondaryPicker.style.height = "35px";
-                        secondaryPicker.style.padding = "0";
-                        secondaryPicker.style.border = "none";
-                        secondaryPicker.style.outline = "none";
-                        secondaryPicker.style.borderRadius = "6px";
-                        secondaryPicker.style.cursor = "pointer";
-                        secondaryPicker.value = charState.colors[layerKey + "_2"] || "#feb44d";
-                        secondaryPicker.addEventListener("input", (e) => {
-                            charState.colors[layerKey + "_2"] = e.target.value;
+                        const primaryPicker = document.createElement("input");
+                        primaryPicker.type = "color";
+                        primaryPicker.className = "box-picker";
+                        primaryPicker.style.width = "35px";
+                        primaryPicker.style.height = "35px";
+                        primaryPicker.style.padding = "0";
+                        primaryPicker.style.border = "none";
+                        primaryPicker.style.outline = "none";
+                        primaryPicker.style.borderRadius = "6px";
+                        primaryPicker.style.cursor = "pointer";
+                        primaryPicker.value = charState.colors[layerKey];
+                        primaryPicker.addEventListener("input", (e) => {
+                            charState.colors[layerKey] = e.target.value;
                             renderSkin();
                         });
-                        colorPickerWrapper.appendChild(secondaryPicker);
-                    }
+                        colorPickerWrapper.appendChild(primaryPicker);
 
-                    itemDiv.appendChild(colorPickerWrapper);
+                        if (layerKey !== 'eyes' && layerKey !== 'eyebrows') {
+                            const secondaryPicker = document.createElement("input");
+                            secondaryPicker.type = "color";
+                            secondaryPicker.className = "box-picker";
+                            secondaryPicker.style.width = "35px";
+                            secondaryPicker.style.height = "35px";
+                            secondaryPicker.style.padding = "0";
+                            secondaryPicker.style.border = "none";
+                            secondaryPicker.style.outline = "none";
+                            secondaryPicker.style.borderRadius = "6px";
+                            secondaryPicker.style.cursor = "pointer";
+                            secondaryPicker.value = charState.colors[layerKey + "_2"] || "#feb44d";
+                            secondaryPicker.addEventListener("input", (e) => {
+                                charState.colors[layerKey + "_2"] = e.target.value;
+                                renderSkin();
+                            });
+                            colorPickerWrapper.appendChild(secondaryPicker);
+                        }
 
-                    if (displaceableConfig[layerKey]) {
-                        let config = displaceableConfig[layerKey];
-                        const offsetWrapper = document.createElement("div");
-                        offsetWrapper.className = "color-box-row";
-                        offsetWrapper.style.marginTop = "8px";
-                        offsetWrapper.style.padding = "6px 10px";
+                        itemDiv.appendChild(colorPickerWrapper);
 
-                        const offsetLabel = document.createElement("span");
-                        offsetLabel.className = "color-box-label";
-                        offsetLabel.innerText = "UP / DOWN";
-                        offsetLabel.style.fontSize = "12px";
-                        offsetLabel.style.color = "#7f8fa6";
-                        offsetLabel.style.fontWeight = "bold";
+                        if (displaceableConfig[layerKey]) {
+                            let config = displaceableConfig[layerKey];
+                            const offsetWrapper = document.createElement("div");
+                            offsetWrapper.className = "color-box-row";
+                            offsetWrapper.style.marginTop = "8px";
+                            offsetWrapper.style.padding = "6px 10px";
 
-                        const offsetSlider = document.createElement("input");
-                        offsetSlider.type = "range";
-                        offsetSlider.min = config.min.toString();
-                        offsetSlider.max = config.max.toString();
-                        offsetSlider.value = charState.offsets[layerKey] || 0;
-                        offsetSlider.style.width = "80px";
-                        offsetSlider.addEventListener("input", (e) => {
-                            charState.offsets[layerKey] = parseInt(e.target.value, 10);
-                            renderSkin();
-                        });
+                            const offsetLabel = document.createElement("span");
+                            offsetLabel.className = "color-box-label";
+                            offsetLabel.innerText = "UP / DOWN";
+                            offsetLabel.style.fontSize = "12px";
+                            offsetLabel.style.color = "#7f8fa6";
+                            offsetLabel.style.fontWeight = "bold";
 
-                        let resetOffsetBtn = document.createElement("button");
-                        resetOffsetBtn.innerText = "↺";
-                        resetOffsetBtn.style.width = "24px";
-                        resetOffsetBtn.style.height = "24px";
-                        resetOffsetBtn.style.padding = "0";
-                        resetOffsetBtn.style.marginLeft = "8px";
-                        resetOffsetBtn.style.backgroundColor = "#7f8fa6";
-                        resetOffsetBtn.style.border = "none";
-                        resetOffsetBtn.style.borderRadius = "4px";
-                        resetOffsetBtn.style.color = "white";
-                        resetOffsetBtn.style.cursor = "pointer";
-                        resetOffsetBtn.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            charState.offsets[layerKey] = 0;
-                            offsetSlider.value = 0;
-                            renderSkin();
-                        });
+                            const offsetSlider = document.createElement("input");
+                            offsetSlider.type = "range";
+                            offsetSlider.min = config.min.toString();
+                            offsetSlider.max = config.max.toString();
+                            offsetSlider.value = charState.offsets[layerKey] || 0;
+                            offsetSlider.style.width = "80px";
+                            offsetSlider.addEventListener("input", (e) => {
+                                charState.offsets[layerKey] = parseInt(e.target.value, 10);
+                                renderSkin();
+                            });
 
-                        offsetWrapper.appendChild(offsetLabel);
-                        offsetWrapper.appendChild(offsetSlider);
-                        offsetWrapper.appendChild(resetOffsetBtn);
+                            let resetOffsetBtn = document.createElement("button");
+                            resetOffsetBtn.innerText = "↺";
+                            resetOffsetBtn.style.width = "24px";
+                            resetOffsetBtn.style.height = "24px";
+                            resetOffsetBtn.style.padding = "0";
+                            resetOffsetBtn.style.marginLeft = "8px";
+                            resetOffsetBtn.style.backgroundColor = "#7f8fa6";
+                            resetOffsetBtn.style.border = "none";
+                            resetOffsetBtn.style.borderRadius = "4px";
+                            resetOffsetBtn.style.color = "white";
+                            resetOffsetBtn.style.cursor = "pointer";
+                            resetOffsetBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                charState.offsets[layerKey] = 0;
+                                offsetSlider.value = 0;
+                                renderSkin();
+                            });
 
-                        offsetWrapper.addEventListener("mouseenter", () => {
-                            itemDiv.draggable = false;
-                        });
-                        offsetWrapper.addEventListener("mouseleave", () => {
-                            itemDiv.draggable = true;
-                        });
-                        offsetWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
-                        offsetWrapper.addEventListener("touchstart", (e) => e.stopPropagation());
+                            offsetWrapper.appendChild(offsetLabel);
+                            offsetWrapper.appendChild(offsetSlider);
+                            offsetWrapper.appendChild(resetOffsetBtn);
+
+                            offsetWrapper.addEventListener("mouseenter", () => {
+                                itemDiv.draggable = false;
+                            });
+                            offsetWrapper.addEventListener("mouseleave", () => {
+                                itemDiv.draggable = true;
+                            });
+                            offsetWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
+                            offsetWrapper.addEventListener("touchstart", (e) => e.stopPropagation());
 
                         itemDiv.appendChild(offsetWrapper);
                     }
@@ -1545,6 +1700,7 @@
                         flipWrapper.addEventListener("touchstart", (e) => e.stopPropagation());
 
                         itemDiv.appendChild(flipWrapper);
+                    }
                     }
                 }
 
@@ -1869,6 +2025,7 @@
                     if (!charState.offsets) charState.offsets = {};
                     if (!charState.flips) charState.flips = {};
                     if (!charState.flipOffsets) charState.flipOffsets = {};
+                    if (!charState.customAssets) charState.customAssets = {};
 
                     // Force the UI and Canvas to completely refresh
                     renderSkin();
@@ -2236,6 +2393,444 @@
         }
 
         console.log("Icon generation complete!");
+    }
+
+    // ==========================================
+    // CUSTOM ASSET IMPORTER/EXPORTER
+    // ==========================================
+    
+    // Asset type mappings to layer keys
+    const assetTypeToLayerKey = {
+        'hair': 'hair',
+        'facehair': 'facehair',
+        'eyes': 'eyes',
+        'eyebrows': 'eyebrows',
+        'mouth': 'mouth',
+        'facemarks': 'head_acc',
+        'head_acc': 'head_acc',
+        'shirt': 'shirt',
+        'pants': 'pants',
+        'boots': 'boots',
+        'shirt_acc': 'shirt_acc',
+        'full_body': 'full_body'
+    };
+
+    // Asset type mappings to 3D camera focus for icon generation
+    const assetTypeToFocus = {
+        'hair': 'head',
+        'facehair': 'head',
+        'eyes': 'head',
+        'eyebrows': 'head',
+        'mouth': 'head',
+        'facemarks': 'head',
+        'head_acc': 'head',
+        'shirt': 'bodytop',
+        'shirt_acc': 'bodytop',
+        'pants': 'bot',
+        'boots': 'bot',
+        'full_body': 'body'
+    };
+
+    function openAssetCreatorModal() {
+        document.getElementById('asset-creator-modal').classList.add('active');
+    }
+
+    function closeAssetCreatorModal() {
+        document.getElementById('asset-creator-modal').classList.remove('active');
+        // Reset form
+        document.getElementById('asset-name').value = '';
+        document.getElementById('asset-type').value = '';
+        document.getElementById('file-mask1').value = '';
+        document.getElementById('file-mask2').value = '';
+        document.getElementById('file-detail').value = '';
+        document.getElementById('file-exclude').value = '';
+        document.getElementById('file-inclusion').value = '';
+    }
+
+    async function exportCustomAsset() {
+        const assetName = document.getElementById('asset-name').value.trim();
+        const assetType = document.getElementById('asset-type').value;
+        
+        if (!assetName) {
+            alert('Please enter an Asset Name.');
+            return;
+        }
+        
+        if (!assetType) {
+            alert('Please select an Asset Type.');
+            return;
+        }
+        
+        // Create JSZip instance
+        const zip = new JSZip();
+        
+        // File inputs to check
+        const fileInputs = [
+            { id: 'file-mask1', suffix: '_mask' },
+            { id: 'file-mask2', suffix: '_mask2' },
+            { id: 'file-detail', suffix: '_detail' },
+            { id: 'file-exclude', suffix: '_exclude' },
+            { id: 'file-inclusion', suffix: '_inclus' }
+        ];
+        
+        let hasFiles = false;
+        let mask1File = null;
+        let mask2File = null;
+        
+        // Read uploaded files and add to zip
+        for (const fileInput of fileInputs) {
+            const input = document.getElementById(fileInput.id);
+            if (input.files && input.files.length > 0) {
+                const file = input.files[0];
+                const fileName = `${assetName}${fileInput.suffix}.png`;
+                const arrayBuffer = await file.arrayBuffer();
+                zip.file(fileName, arrayBuffer);
+                hasFiles = true;
+                
+                // Store file references for icon generation
+                if (fileInput.id === 'file-mask1') mask1File = file;
+                if (fileInput.id === 'file-mask2') mask2File = file;
+            }
+        }
+        
+        if (!hasFiles) {
+            alert('Please upload at least one PNG file.');
+            return;
+        }
+        
+        // Create asset_info.json
+        const assetInfo = {
+            name: assetName,
+            type: assetType
+        };
+        zip.file('asset_info.json', JSON.stringify(assetInfo, null, 2));
+        
+        // Generate 3D icon
+        try {
+            console.log(`Generating 3D icon for ${assetName}...`);
+            const focus = assetTypeToFocus[assetType] || 'head';
+            const iconBlob = await generateCustomAssetIcon(assetName, mask1File, mask2File, focus);
+            zip.file(`icon_${assetName}.png`, iconBlob);
+            console.log(`Icon generated for ${assetName}`);
+        } catch (err) {
+            console.error('Error generating icon:', err);
+            alert('Warning: Icon generation failed, but asset will be exported without icon.');
+        }
+        
+        // Generate and download zip
+        try {
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${assetName}_cc.zip`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            console.log(`Asset ${assetName} exported as ${assetName}_cc.zip`);
+            alert(`Asset exported successfully as ${assetName}_cc.zip!`);
+            closeAssetCreatorModal();
+        } catch (err) {
+            console.error('Error generating ZIP:', err);
+            alert('Error exporting asset. Please try again.');
+        }
+    }
+
+    async function generateCustomAssetIcon(assetName, mask1File, mask2File, focus) {
+        // Create a 64x64 2D canvas for the base character
+        const baseCanvas = document.createElement('canvas');
+        baseCanvas.width = 64;
+        baseCanvas.height = 64;
+        const baseCtx = baseCanvas.getContext('2d');
+        
+        // Draw the base character
+        await drawTintedLayer(baseCtx, 'base_male_mask.png', '#f1c27d', 'base_male_details.png');
+        await drawTintedLayer(baseCtx, 'Bottom2x2eyes_skin.png', '#f1c27d');
+        await drawTintedLayer(baseCtx, 'Bottom2x2eyes_mask.png', '#3498db', 'Bottom2x2eyes_detail.png');
+        await drawTintedLayer(baseCtx, '2x2eyes_eyebrows_skin.png', '#f1c27d');
+        await drawTintedLayer(baseCtx, '2x2eyes_eyebrows.png', '#2c3e50');
+        
+        // Load and draw mask1
+        if (mask1File) {
+            const mask1DataUrl = await fileToDataUrl(mask1File);
+            const mask1Img = await loadImageAsync(mask1DataUrl);
+            if (mask1Img) {
+                baseCtx.drawImage(mask1Img, 0, 0, 64, 64);
+            }
+        }
+        
+        // Load and draw mask2
+        if (mask2File) {
+            const mask2DataUrl = await fileToDataUrl(mask2File);
+            const mask2Img = await loadImageAsync(mask2DataUrl);
+            if (mask2Img) {
+                baseCtx.drawImage(mask2Img, 0, 0, 64, 64);
+            }
+        }
+        
+        // Create a hidden container for the 3D viewer
+        const hiddenDiv = document.createElement('div');
+        hiddenDiv.style.position = 'fixed';
+        hiddenDiv.style.top = '-9999px';
+        hiddenDiv.style.width = '128px';
+        hiddenDiv.style.height = '128px';
+        document.body.appendChild(hiddenDiv);
+        
+        // Create SkinView3D viewer
+        const iconCanvas = document.createElement('canvas');
+        iconCanvas.width = 128;
+        iconCanvas.height = 128;
+        hiddenDiv.appendChild(iconCanvas);
+        
+        const viewer = new skinview3d.SkinViewer({
+            canvas: iconCanvas,
+            width: 128,
+            height: 128,
+            alpha: true
+        });
+        
+        viewer.autoRotate = false;
+        viewer.animation = null;
+        
+        try {
+            // Load the base character with the custom asset
+            await viewer.loadSkin(baseCanvas.toDataURL('image/png'), { model: 'default' });
+        } catch (e) {
+            console.error('Failed to load skin for icon:', e);
+        }
+        
+        // Wait for skin to load
+        await new Promise(r => setTimeout(r, 100));
+        
+        // Apply camera setup based on focus
+        const setup = getStudioSetupForFocus(focus);
+        viewer.camera.position.set(0, 0, setup.cameraZ);
+        viewer.camera.rotation.set(0, 0, 0);
+        viewer.camera.updateProjectionMatrix();
+        
+        if (viewer.playerObject) {
+            viewer.playerObject.position.set(...setup.modelPos);
+            viewer.playerObject.rotation.set(...setup.modelRot);
+        }
+        
+        // Wait for WebGL to process
+        await new Promise(r => setTimeout(r, 100));
+        
+        // Render and capture
+        viewer.render();
+        await new Promise(r => setTimeout(r, 50));
+        
+        const dataUrl = iconCanvas.toDataURL('image/png');
+        const imgElement = document.createElement('img');
+        await new Promise(resolve => {
+            imgElement.onload = resolve;
+            imgElement.src = dataUrl;
+        });
+        
+        // Crop to center 100x100
+        const croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = 100;
+        croppedCanvas.height = 100;
+        const croppedCtx = croppedCanvas.getContext('2d');
+        croppedCtx.imageSmoothingEnabled = false;
+        croppedCtx.drawImage(imgElement, 14, 14, 100, 100, 0, 0, 100, 100);
+        
+        // Convert to blob
+        return new Promise(resolve => {
+            croppedCanvas.toBlob(resolve, 'image/png');
+        }).finally(() => {
+            document.body.removeChild(hiddenDiv);
+            viewer.dispose();
+        });
+    }
+
+    function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function importCustomAsset(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const zip = new JSZip();
+            const loaded = await zip.loadAsync(file);
+            
+            // Parse asset_info.json
+            const infoFile = loaded.file('asset_info.json');
+            if (!infoFile) {
+                alert('Invalid asset file: missing asset_info.json');
+                return;
+            }
+            
+            const assetInfoText = await infoFile.async('text');
+            const assetInfo = JSON.parse(assetInfoText);
+            const assetName = assetInfo.name;
+            const assetType = assetInfo.type;
+            
+            if (!assetName || !assetType) {
+                alert('Invalid asset_info.json: missing name or type.');
+                return;
+            }
+            
+            // Extract PNG files and create blob URLs
+            const pngFiles = [];
+            let iconUrl = null;
+            for (const [fileName, fileObj] of Object.entries(loaded.files)) {
+                if (fileName.endsWith('.png')) {
+                    const blob = await fileObj.async('blob');
+                    const blobUrl = URL.createObjectURL(blob);
+                    customAssetCache[fileName] = blobUrl;
+                    pngFiles.push(fileName);
+                    
+                    // Look for the icon file
+                    if (fileName === `icon_${assetName}.png`) {
+                        iconUrl = blobUrl;
+                    }
+                }
+            }
+            
+            if (pngFiles.length === 0) {
+                alert('No PNG files found in the asset package.');
+                return;
+            }
+            
+            // Determine the layer key
+            const layerKey = assetTypeToLayerKey[assetType];
+            if (!layerKey) {
+                alert(`Unknown asset type: ${assetType}`);
+                return;
+            }
+            
+            // Get the custom-asset-grid
+            let grid = document.getElementById('custom-asset-grid');
+            if (!grid) {
+                alert('Custom Assets grid not found. Please navigate to Custom Assets screen first.');
+                return;
+            }
+            
+            // Create and add the new accessory button
+            const button = document.createElement('button');
+            button.className = 'accessory-btn';
+            button.title = assetName;
+            button.dataset.equipLayer = layerKey;
+            button.dataset.equipFile = assetName;
+            
+            // Use the generated icon if available
+            if (iconUrl) {
+                const img = document.createElement('img');
+                img.src = iconUrl;
+                img.alt = assetName;
+                button.appendChild(img);
+            } else {
+                // Fallback: use first mask or initials
+                const mask1 = pngFiles.find(f => f.includes('_mask.png') && !f.includes('_mask2'));
+                if (mask1 && customAssetCache[mask1]) {
+                    const img = document.createElement('img');
+                    img.src = customAssetCache[mask1];
+                    img.alt = assetName;
+                    button.appendChild(img);
+                } else {
+                    button.textContent = assetName.substring(0, 3).toUpperCase();
+                    button.style.fontSize = '12px';
+                }
+            }
+            
+            // Set onclick handler based on layer type
+            if (['hair', 'facehair', 'shirt', 'pants', 'boots', 'eyes', 'eyebrows', 'mouth', 'full_body'].includes(layerKey)) {
+                button.onclick = () => equipPart(layerKey, assetName);
+            } else if (layerKey.startsWith('head_acc') || layerKey.startsWith('shirt_acc')) {
+                button.onclick = () => toggleAccessory(layerKey, assetName, button);
+            }
+            
+            grid.appendChild(button);
+            
+            // Track custom asset in state for layout export/import
+            charState.customAssets[assetName] = assetType;
+            
+            console.log(`Asset '${assetName}' imported successfully with ${pngFiles.length} PNG file(s).`);
+            alert(`Asset '${assetName}' imported successfully!`);
+            
+            // Reset file input
+            event.target.value = '';
+        } catch (err) {
+            console.error('Error importing asset:', err);
+            alert('Error importing asset. Please ensure it is a valid custom asset ZIP file.');
+            event.target.value = '';
+        }
+    }
+
+    // Handle reimporting missing assets
+    async function handleReimportAsset(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const targetAsset = window.pendingReimportAsset;
+        if (!targetAsset) {
+            alert('Error: No asset selected for reimport.');
+            event.target.value = '';
+            return;
+        }
+        
+        await reimportMissingAsset(file, targetAsset.assetName, targetAsset.layerKey);
+        event.target.value = '';
+    }
+
+    async function reimportMissingAsset(file, targetAssetName, targetLayerKey) {
+        try {
+            const zip = new JSZip();
+            const loaded = await zip.loadAsync(file);
+            
+            // Parse asset_info.json to verify it's the correct asset
+            const infoFile = loaded.file('asset_info.json');
+            if (!infoFile) {
+                alert('Invalid asset file: missing asset_info.json');
+                return;
+            }
+            
+            const assetInfoText = await infoFile.async('text');
+            const assetInfo = JSON.parse(assetInfoText);
+            const foundName = assetInfo.name;
+            
+            // Verify the name matches
+            if (foundName !== targetAssetName) {
+                alert(`This ZIP contains "${foundName}", but you need "${targetAssetName}".`);
+                return;
+            }
+            
+            // Extract PNG files and repopulate customAssetCache
+            const pngFiles = [];
+            for (const [fileName, fileObj] of Object.entries(loaded.files)) {
+                if (fileName.endsWith('.png')) {
+                    const blob = await fileObj.async('blob');
+                    const blobUrl = URL.createObjectURL(blob);
+                    customAssetCache[fileName] = blobUrl;
+                    pngFiles.push(fileName);
+                }
+            }
+            
+            if (pngFiles.length === 0) {
+                alert('No PNG files found in the asset package.');
+                return;
+            }
+            
+            console.log(`Asset '${targetAssetName}' reimported successfully with ${pngFiles.length} PNG file(s).`);
+            alert(`Asset '${targetAssetName}' textures restored! Character will now render correctly.`);
+            
+            // Refresh UI to show the restored asset
+            renderSkin();
+            updateEquippedListUI();
+            updateRightPanelState();
+            
+        } catch (err) {
+            console.error('Error reimporting asset:', err);
+            alert('Error reimporting asset. Please ensure it is a valid custom asset ZIP file.');
+        }
     }
 
     // ==========================================
