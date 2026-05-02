@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Island Roleplay - Character Creator</title>
+    <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.4.1/bundles/skinview3d.bundle.js"></script>
+    <style>
+        body { background-color: #1e272e; color: white; font-family: sans-serif; margin: 0; padding: 0; overflow: hidden; }
+        
+        #app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+        #left-panel { width: 340px; background-color: #2f3640; padding: 20px; position: relative; box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 10; overflow-y: auto; flex-shrink: 0; font-size: 14px; }
+        
+        #center-panel { flex-grow: 1; display: flex; justify-content: center; align-items: center; cursor: grab; position: relative; }
+        #center-panel:active { cursor: grabbing; }
+        #viewer_3d { background-color: rgba(0,0,0,0.2); border-radius: 15px; }
+        
+        #toggle-rotate-btn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 140px; background-color: rgba(47, 54, 64, 0.85); box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 2px solid #7f8fa6; backdrop-filter: blur(4px); z-index: 100; color: white; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s ease; }
+        #toggle-rotate-btn:hover { background-color: rgba(53, 59, 72, 1); border-color: #4CAF50; }
+
+        #right-panel { width: 340px; background-color: #2f3640; padding: 20px; box-shadow: -2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 15px; z-index: 10; overflow: hidden; flex-shrink: 0; position: relative; }
+        
+        .ui-screen { position: absolute; top: 20px; left: 20px; right: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; }
+        .ui-screen.active { opacity: 1; pointer-events: auto; }
+
+        button { width: 100%; padding: 10px; margin-bottom: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 6px; border: none; background-color: #4CAF50; color: white; transition: background 0.2s; }
+        button:hover { background-color: #45a049; }
+        button.back-btn { background-color: #7f8fa6; margin-bottom: 20px; }
+        button.back-btn:hover { background-color: #718093; }
+
+        .icon-btn { display: flex; align-items: center; gap: 10px; text-align: left; background-color: #353b48; }
+        .icon-btn:hover { background-color: #2f3640; border: 1px solid #4CAF50; }
+        .icon-btn.active-acc { border-color: #e55039; background-color: #2d3436; } 
+        
+        .icon-placeholder { width: 40px; height: 40px; background-color: #1e272e; border-radius: 4px; display: inline-block; }
+        
+        #skin-palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        /* Skin Tone Slider Styling */
+        #skin-tone-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 8px;
+            outline: none;
+            /* This draws a background matching your exact 6 colors! */
+            background: linear-gradient(to right, #ffdbac, #f1c27d, #e0ac69, #c68642, #8d5524, #3d2210);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            margin-top: 10px;
+        }
+
+        #skin-tone-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #2f3640;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
+        
+        #eyebrow-slider-container { margin-top: 15px; }
+        #eyebrow-position-slider { width: 100%; }
+        .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: #f5f6fa; }
+        .toggle-row input { transform: scale(1.1); margin: 0; }
+
+        .color-label { display: block; font-size: 12px; margin-bottom: 5px; color: #7f8fa6; font-weight: bold; letter-spacing: 1px; }
+
+        #accessory-panel { display: none; flex-direction: column; gap: 10px; margin-top: 15px; }
+        #accessory-panel.visible { display: flex; }
+        #accessory-panel-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        #accessory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 8px; }
+        .equip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; margin-bottom: 5px; }
+        .accessory-btn { width: 100%; aspect-ratio: 1; border: 2px solid transparent; border-radius: 14px; background: #353b48; padding: 0; cursor: pointer; display: grid; place-items: center; position: relative; overflow: hidden; }
+        .eye-group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 20px; }
+        .eye-group-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; min-height: 110px; background-color: #353b48; border: 2px solid transparent; border-radius: 12px; padding: 12px; }
+        .eye-group-btn:hover { border-color: #4CAF50; }
+        .eye-group-btn.active { border-color: #4CAF50; background-color: #2f3640; }
+        .eye-group-btn .icon-placeholder { width: 50px; height: 50px; }
+        #eye-position-slider-container { margin-top: 15px; }
+        #eye-position-slider-container .color-label { margin-bottom: 5px; }
+        #eye-position-slider-container input[type="range"] { width: 100%; height: 6px; background: #718093; border-radius: 999px; accent-color: #4CAF50; }
+        #eye-position-slider-container #eye-position-labels { display: flex; justify-content: space-between; font-size: 12px; color: #7f8fa6; margin-top: 4px; }
+        .accessory-btn.active { border-color: #4CAF50; }
+        .accessory-btn img { width: 70%; height: auto; object-fit: contain; }
+        .accessory-btn .accessory-label { position: absolute; width: 1px; height: 1px; clip: rect(1px, 1px, 1px, 1px); overflow: hidden; }
+
+        input[type="color"] { width: 100%; height: 60px; border: none; border-radius: 8px; cursor: pointer; background: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid #fff; border-radius: 8px; }
+        .box-picker { width: 35px !important; height: 35px !important; border: none !important; outline: none !important; border-radius: 6px; cursor: pointer; background: none; padding: 0; margin: 0; }
+        .box-picker::-webkit-color-swatch-wrapper { padding: 0; border: none !important; outline: none !important; }
+        .box-picker::-webkit-color-swatch { border: 2px solid #7f8fa6; border-radius: 6px; }
+
+        #eyebrow-slider-container input[type="range"] { width: 100%; height: 6px; background: #718093; border-radius: 999px; accent-color: #4CAF50; }
+        #eyebrow-slider-container input[type="range"][disabled] { opacity: 0.35; cursor: not-allowed; }
+        #eyebrow-slider-container label { user-select: none; }
+        #eyebrow-slider-container input[type="checkbox"] { width: 16px; height: 16px; accent-color: #4CAF50; }
+        
+        .eyebrow-controls { margin-top: 15px; }
+        .eyebrow-controls input[type="range"] { width: 100%; height: 6px; background: #718093; border-radius: 999px; accent-color: #4CAF50; }
+        .eyebrow-controls label { user-select: none; }
+        .eyebrow-controls input[type="checkbox"] { width: 16px; height: 16px; accent-color: #4CAF50; }
+
+        .flip-checkbox-row input[type="range"] { height: 5px; background: #718093; border-radius: 999px; accent-color: #4CAF50; }
+        
+        .hidden { display: none !important; }
+        
+        #export-btn { position: absolute; top: 20px; right: 20px; width: 120px; background-color: #e55039; color: white; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; z-index: 100; }
+        #export-btn:hover { background-color: #c44535; }
+
+        #equipped-list { overflow-y: auto; flex-grow: 1; padding-right: 5px; display: flex; flex-direction: column; gap: 8px; }
+        #equipped-list::-webkit-scrollbar { width: 6px; }
+        #equipped-list::-webkit-scrollbar-thumb { background: #7f8fa6; border-radius: 3px; }
+        
+        .equipped-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; background-color: #353b48; padding: 10px; border-radius: 6px; cursor: grab; transition: background 0.2s, border 0.2s; border: 2px solid transparent; }
+        .equipped-item:active { cursor: grabbing; }
+        .equipped-item:hover { border-color: #4CAF50; background-color: #2f3640; }
+        .equipped-item.dragging { opacity: 0.5; border: 2px dashed #7f8fa6; }
+        .equipped-item.drag-over { border-top: 4px solid #e55039; padding-top: 8px; }
+        .equipped-name { flex-grow: 1; font-size: 14px; text-transform: capitalize; color: #f5f6fa; font-weight: bold; pointer-events: none; }
+        .remove-btn { background-color: #d9534f; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold; width: auto; margin-bottom: 0; z-index: 5; position: relative; }
+        .remove-btn:hover { background-color: #c9302c; }
+        .equipped-color-box { width: 30px; height: 30px; display: inline-block; border: 2px solid #4CAF50; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: transform 0.1s; }
+        .equipped-color-box:hover { transform: scale(1.1); border-color: #45a049; }
+        .color-picker-group { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+        .hidden-color-input { display: none; }
+        .primary-color-picker-group { display: flex; gap: 10px; }
+        .primary-color-picker-group input { width: 60px; height: 60px; border: none; border-radius: 8px; cursor: pointer; }
+        .equipped-base { cursor: default; background-color: #2f3640; border: 1px solid #7f8fa6; }
+        .equipped-base:hover { border-color: #7f8fa6; background-color: #2f3640; }
+
+/* Accordion Styling */
+.accordion-btn { background-color: #353b48; color: #f5f6fa; text-align: left; padding: 12px; font-weight: bold; cursor: pointer; border: 1px solid transparent; border-radius: 6px; width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; transition: background 0.2s; }
+.accordion-btn:hover { background-color: #2f3640; border-color: #4CAF50; }
+.accordion-content { display: flex; flex-direction: column; overflow: hidden; max-height: 2000px; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; opacity: 1; margin-bottom: 10px; padding-left: 10px; border-left: 2px solid #7f8fa6; }
+.accordion-content.collapsed { max-height: 0; opacity: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; pointer-events: none; border-left-color: transparent; }
+.arrow { font-size: 12px; transition: transform 0.3s; }
+.accordion-btn.open .arrow { transform: rotate(180deg); }
+
+/* Resizer Handles */
+.resizer { width: 6px; background: rgba(255,255,255,0.1); cursor: ew-resize; position: absolute; top: 0; bottom: 0; z-index: 100; transition: background 0.2s; }
+.resizer:hover { background: #4CAF50; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    
+    <div id="left-panel">
+        <div id="screen-gender" class="ui-screen active">
+            <h2>Select Base</h2>
+            <button onclick="selectGender('male')">Male Base</button>
+            <button onclick="selectGender('female')">Female Base</button>
+        </div>
+
+        <div id="screen-categories" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-gender', 'base')">← Back to Base</button>
+            <h2>Categories</h2>
+            <button onclick="switchScreen('screen-head-cats')">Head</button>
+            <button onclick="switchScreen('screen-body-cats')">Body</button>
+            <button onclick="switchScreen('screen-fullbody-items', 'full_body')">Full Body</button>
+        </div>
+
+        <div id="screen-head-cats" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-categories', 'base')">← Back to Categories</button>
+            <h2>Head Parts</h2>
+            <button onclick="switchScreen('screen-hair-items', 'hair')">Hair</button>
+            <button onclick="switchScreen('screen-face-items', 'eyes')">Face</button>
+        </div>
+
+        <div id="screen-face-items" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-head-cats', 'base')">← Back to Head</button>
+            <h2>Face</h2>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'eyes')">Eyes <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div id="eye-position-slider-container">
+                    <span class="color-label">EYE POSITION</span>
+                    <input type="range" id="eye-position-slider" min="0" max="3" value="0">
+                </div>
+                <div id="eye-group-grid" class="eye-group-grid"></div>
+                <button id="eyelashes-toggle-btn" class="icon-btn" onclick="toggleEyelashes(this)" style="margin-top: 15px;">
+                    <div class="icon-placeholder"></div> Toggle Eyelashes
+                </button>
+            </div>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'eyebrows')">Eyebrows <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="eyebrow-controls">
+                    <span class="color-label">EYEBROW POSITION</span>
+                    <input type="range" id="left-slider-eyebrows" min="0" max="3" value="1">
+                    <div class="toggle-row">
+                        <input type="checkbox" id="left-villager-eyebrows-toggle">
+                        <label for="left-villager-eyebrows-toggle">Villager Eyebrows</label>
+                    </div>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="left-unequip-eyebrows-toggle">
+                        <label for="left-unequip-eyebrows-toggle">Unequip Eyebrows</label>
+                    </div>
+                </div>
+            </div>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'mouth')">Mouth <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div style="margin-top: 15px;">
+                    <span class="color-label">MOUTH POSITION</span>
+                    <input type="range" id="left-slider-mouth" min="-2" max="1" value="0" oninput="charState.offsets['mouth'] = parseInt(this.value, 10); renderSkin();">
+                </div>
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="mouth" data-equip-file="2x1mouth" onclick="equipPart('mouth', '2x1mouth')" title="2x1 Mouth"><img src="icons/icon_2x1mouth.png" alt="2x1 Mouth"></button>
+                    <button class="accessory-btn" data-equip-layer="mouth" data-equip-file="4x1mouth" onclick="equipPart('mouth', '4x1mouth')" title="4x1 Mouth"><img src="icons/icon_4x1mouth.png" alt="4x1 Mouth"></button>
+                </div>
+                <button onclick="equipPart('mouth', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+            </div>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'facemarks')">Face Marks <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" onclick="toggleAccessory('head_acc_scar', 'scar', this)" title="Scar"><img src="icons/icon_scar.png" alt="Scar"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('head_acc_bigscar', 'bigscar', this)" title="Big Scar"><img src="icons/icon_bigscar.png" alt="Big Scar"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('head_acc_scar2', 'scar2', this)" title="Scar 2"><img src="icons/icon_scar2.png" alt="Scar 2"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('head_acc_eyescar', 'eyescar', this)" title="Eye Scar"><img src="icons/icon_eyescar.png" alt="Eye Scar"></button>
+                </div>
+                <p style="font-size: 12px; color: #7f8fa6; margin-top: 5px;">Flip and offset controls appear in the equipped items list.</p>
+            </div>
+        </div>
+
+        <div id="screen-hair-items" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-head-cats', 'base')">← Back to Head</button>
+            <h2>Hair & Facial Hair</h2>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'hair')">Hairstyles <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="shorthair.png" onclick="equipPart('hair', 'shorthair.png')" title="Short Hair"><img src="icons/icon_shorthair.png" alt="Short Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="straightfluff.png" onclick="equipPart('hair', 'straightfluff.png')" title="Straight Fluff"><img src="icons/icon_straightfluff.png" alt="Straight Fluff"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="shortfluffybangs.png" onclick="equipPart('hair', 'shortfluffybangs.png')" title="Short Fluffy Bangs"><img src="icons/icon_shortfluffybangs.png" alt="Short Fluffy Bangs"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="slickback.png" onclick="equipPart('hair', 'slickback.png')" title="Slickback"><img src="icons/icon_slickback.png" alt="Slickback"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="sidepart.png" onclick="equipPart('hair', 'sidepart.png')" title="Side Part"><img src="icons/icon_sidepart.png" alt="Side Part"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="overgrownhair" onclick="equipPart('hair', 'overgrownhair')" title="Overgrown Hair"><img src="icons/icon_overgrownhair.png" alt="Overgrown Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="simplehair" onclick="equipPart('hair', 'simplehair')" title="Simple Hair"><img src="icons/icon_simplehair.png" alt="Simple Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="leonsidepart" onclick="equipPart('hair', 'longsidepart')" title="Long Side Part"><img src="icons/icon_longsidepart.png" alt="Long Side Part"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="longgirlhair.png" onclick="equipPart('hair', 'longgirlhair.png')" title="Long Girl Hair"><img src="icons/icon_longgirlhair.png" alt="Long Girl Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="longhair2" onclick="equipPart('hair', 'longhair2')" title="Long Hair 2"><img src="icons/icon_longhair2.png" alt="Long Hair 2"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="elfhair" onclick="equipPart('hair', 'elfhair')" title="Elf Hair"><img src="icons/icon_elfhair.png" alt="Elf Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="longbangs" onclick="equipPart('hair', 'longbangs')" title="Long Bangs"><img src="icons/icon_longbangs.png" alt="Long Bangs"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="angelhair" onclick="equipPart('hair', 'angelhair')" title="Angel Hair"><img src="icons/icon_angelhair.png" alt="Angel Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="roughgirlhair" onclick="equipPart('hair', 'roughgirlhair')" title="Rough Girl Hair"><img src="icons/icon_roughgirlhair.png" alt="Rough Girl Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="shortgirlhair" onclick="equipPart('hair', 'shortgirlhair')" title="Short Girl Hair"><img src="icons/icon_shortgirlhair.png" alt="Short Girl Hair"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="shorthair3" onclick="equipPart('hair', 'shorthair3')" title="Short Hair 3"><img src="icons/icon_shorthair3.png" alt="Short Hair 3"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="shorthair2" onclick="equipPart('hair', 'shorthair2')" title="Short Hair 2"><img src="icons/icon_shorthair2.png" alt="Short Hair 2"></button>
+                    <button class="accessory-btn" data-equip-layer="hair" data-equip-file="alexhair" onclick="equipPart('hair', 'alexhair')" title="Alex Hair"><img src="icons/icon_alexhair.png" alt="Alex Hair"></button>
+                </div>
+                <button onclick="equipPart('hair', null)" style="background-color: #d9534f; margin-top: 5px;">Bald (Remove)</button>
+            </div>
+
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'facehair')">Facial Hair <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="facehair" data-equip-file="beard" onclick="equipPart('facehair', 'beard')" title="Beard"><img src="icons/icon_beard.png" alt="Beard"></button>
+                    <button class="accessory-btn" data-equip-layer="facehair" data-equip-file="lightshaven" onclick="equipPart('facehair', 'lightshaven')" title="Light Shaven"><img src="icons/icon_lightshaven.png" alt="Light Shaven"></button>
+                    <button class="accessory-btn" data-equip-layer="facehair" data-equip-file="beard2" onclick="equipPart('facehair', 'beard2')" title="Beard 2"><img src="icons/icon_beard2.png" alt="Beard 2"></button>
+                </div>
+                <button onclick="equipPart('facehair', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+            </div>
+        </div>
+
+        <div id="screen-head-acc" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-head-cats')">← Back to Head</button>
+            <h2>Head Accessories</h2>
+            <div class="equip-grid">
+                <button class="accessory-btn" onclick="toggleAccessory('head_acc_grasscrown', 'grasscrown', this)" title="Grass Crown"><img src="icons/icon_grasscrown.png" alt="Grass Crown"></button>
+            </div>
+            <p style="font-size: 12px; color: #7f8fa6; margin-top: 5px;">Accessory toggles appear on the right panel above equipped items.</p>
+        </div>
+
+        <div id="screen-body-cats" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-categories', 'base')">← Back to Categories</button>
+            <h2>Body</h2>
+            
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'shirt')">Shirts <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="rocket_outfit" onclick="equipPart('shirt', 'rocket_outfit')" title="Rocket Outfit"><img src="icons/icon_rocket_outfit.png" alt="Rocket Outfit"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="peasant_hood" onclick="equipPart('shirt', 'peasant_hood')" title="Peasant Hood"><img src="icons/icon_peasant_hood.png" alt="Peasant Hood"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="shirt" onclick="equipPart('shirt', 'shirt')" title="Shirt"><img src="icons/icon_shirt.png" alt="Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="secondshirt" onclick="equipPart('shirt', 'secondshirt')" title="Second Shirt"><img src="icons/icon_secondshirt.png" alt="Second Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="medievalshirt" onclick="equipPart('shirt', 'medievalshirt')" title="Medieval Shirt"><img src="icons/icon_medievalshirt.png" alt="Medieval Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="elfshirt" onclick="equipPart('shirt', 'elfshirt')" title="Elf Shirt"><img src="icons/icon_elfshirt.png" alt="Elf Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="puffarms" onclick="equipPart('shirt', 'puffarms')" title="Puff Arms"><img src="icons/icon_puffarms.png" alt="Puff Arms"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="hoodonshirt" onclick="equipPart('shirt', 'hoodonshirt')" title="Hood on Shirt"><img src="icons/icon_hoodonshirt.png" alt="Hood on Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="ansellshirt" onclick="equipPart('shirt', 'ansellshirt')" title="Ansell Shirt"><img src="icons/icon_ansellshirt.png" alt="Ansell Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="colorfulshirt" onclick="equipPart('shirt', 'colorfulshirt')" title="Colorful Shirt"><img src="icons/icon_colorfulshirt.png" alt="Colorful Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="leonshirt" onclick="equipPart('shirt', 'leonshirt')" title="Leon Shirt"><img src="icons/icon_leonshirt.png" alt="Leon Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="angelrobe" onclick="equipPart('shirt', 'angelrobe')" title="Angel Robe"><img src="icons/icon_angelrobe.png" alt="Angel Robe"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="roughshirt" onclick="equipPart('shirt', 'roughshirt')" title="Rough Shirt"><img src="icons/icon_roughshirt.png" alt="Rough Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="propershirt" onclick="equipPart('shirt', 'propershirt')" title="Proper Shirt"><img src="icons/icon_propershirt.png" alt="Proper Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="alexshirt" onclick="equipPart('shirt', 'alexshirt')" title="Alex Shirt"><img src="icons/icon_alexshirt.png" alt="Alex Shirt"></button>
+                    <button class="accessory-btn" data-equip-layer="shirt" data-equip-file="pique" onclick="equipPart('shirt', 'pique')" title="Pique"><img src="icons/icon_pique.png" alt="Pique"></button>
+                </div>
+                <button onclick="equipPart('shirt', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+            </div>
+            
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'pants')">Pants <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="peasant_hood_legs" onclick="equipPart('pants', 'peasant_hood_legs')" title="Peasant Pants"><img src="icons/icon_peasant_hood_legs.png" alt="Peasant Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="dresspants" onclick="equipPart('pants', 'dresspants')" title="Dress Pants"><img src="icons/icon_dresspants.png" alt="Dress Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="pants" onclick="equipPart('pants', 'pants')" title="Plain Pants"><img src="icons/icon_pants.png" alt="Plain Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="medievalpants" onclick="equipPart('pants', 'medievalpants')" title="Medieval Pants"><img src="icons/icon_medievalpants.png" alt="Medieval Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="elfpants" onclick="equipPart('pants', 'elfpants')" title="Elf Pants"><img src="icons/icon_elfpants.png" alt="Elf Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="leafpants" onclick="equipPart('pants', 'leafpants')" title="Leaf Pants"><img src="icons/icon_leafpants.png" alt="Leaf Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="peasantskirt" onclick="equipPart('pants', 'peasantskirt')" title="Peasant Skirt"><img src="icons/icon_peasantskirt.png" alt="Peasant Skirt"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="hoodonshirtpants" onclick="equipPart('pants', 'hoodonshirtpants')" title="Hood on Shirt Pants"><img src="icons/icon_hoodonshirtpants.png" alt="Hood on Shirt Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="ansellpants" onclick="equipPart('pants', 'ansellpants')" title="Ansell Pants"><img src="icons/icon_ansellpants.png" alt="Ansell Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="colorfulpants" onclick="equipPart('pants', 'colorfulpants')" title="Colorful Pants"><img src="icons/icon_colorfulpants.png" alt="Colorful Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="leonpants" onclick="equipPart('pants', 'leonpants')" title="Leon Pants"><img src="icons/icon_leonpants.png" alt="Leon Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="roughpants" onclick="equipPart('pants', 'roughpants')" title="Rough Pants"><img src="icons/icon_roughpants.png" alt="Rough Pants"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="dresspants2" onclick="equipPart('pants', 'dresspants2')" title="Dress Pants 2"><img src="icons/icon_dresspants2.png" alt="Dress Pants 2"></button>
+                    <button class="accessory-btn" data-equip-layer="pants" data-equip-file="alexpants" onclick="equipPart('pants', 'alexpants')" title="Alex Pants"><img src="icons/icon_alexpants.png" alt="Alex Pants"></button>
+                </div>
+                <button onclick="equipPart('pants', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+            </div>
+            
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'boots')">Boots <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" data-equip-layer="boots" data-equip-file="blacksmithboots" onclick="equipPart('boots', 'blacksmithboots')" title="Blacksmith Boots"><img src="icons/icon_blacksmithboots.png" alt="Blacksmith Boots"></button>
+                </div>
+                <button onclick="equipPart('boots', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+            </div>
+            
+            <button class="accordion-btn" onclick="toggleAccordion(this, 'body')">Body Accessories <span class="arrow">▼</span></button>
+            <div class="accordion-content collapsed">
+                <div class="equip-grid">
+                    <button class="accessory-btn" onclick="toggleAccessory('shirt_acc_sidebag', 'sidebag', this)" title="Side Bag"><img src="icons/icon_sidebag.png" alt="Side Bag"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('shirt_acc_bodybelt', 'bodybelt', this)" title="Body Belt"><img src="icons/icon_bodybelt.png" alt="Body Belt"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('shirt_acc_strawhatback', 'strawhatback', this)" title="Straw Hat Back"><img src="icons/icon_strawhatback.png" alt="Straw Hat Back"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('shirt_acc_blacksmithapron', 'blacksmithapron', this)" title="Blacksmith Apron"><img src="icons/icon_blacksmithapron.png" alt="Blacksmith Apron"></button>
+                    <button class="accessory-btn" onclick="toggleAccessory('shirt_acc_sidebag2', 'sidebag2', this)" title="Side Bag 2"><img src="icons/icon_sidebag2.png" alt="Side Bag 2"></button>
+                </div>
+                <p style="font-size: 12px; color: #7f8fa6; margin-top: 5px;">Accessory toggles appear on the right panel above equipped items.</p>
+            </div>
+        </div>
+
+        <div id="screen-leg-acc" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-body-cats')">← Back to Body</button>
+            <h2>Body Accessories</h2>
+            <p style="font-size: 12px; color: #7f8fa6;">Accessory toggles appear on the right panel above equipped items.</p>
+        </div>
+
+        <div id="screen-fullbody-items" class="ui-screen">
+            <button class="back-btn" onclick="switchScreen('screen-categories', 'base')">← Back to Categories</button>
+            <h2>Full Body</h2>
+            <div class="equip-grid">
+                <button class="accessory-btn" data-equip-layer="full_body" data-equip-file="femalewizardrobe" onclick="equipPart('full_body', 'femalewizardrobe')" title="Female Wizard Robe"><img src="icons/icon_femalewizardrobe.png" alt="Female Wizard Robe"></button>
+            </div>
+            <button onclick="equipPart('full_body', null)" style="background-color: #d9534f; margin-top: 5px;">Unequip</button>
+        </div>
+        <div id="left-resizer" class="resizer" style="right: -3px;"></div>
+    </div>
+
+    <div id="center-panel">
+        <!-- NEW LAYOUT CONTROLS -->
+        <div id="layout-controls" style="position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; z-index: 100;">
+            <button id="export-layout-btn" onclick="exportLayout()" style="background-color: #3498db; width: auto; padding: 8px 12px;">📤 Export Layout</button>
+            <button id="import-layout-btn" onclick="document.getElementById('import-file').click()" style="background-color: #9b59b6; width: auto; padding: 8px 12px;">📥 Import Layout</button>
+            <input type="file" id="import-file" style="display: none;" accept=".json,.txt" onchange="importLayout(event)">
+        </div>
+
+        <canvas id="viewer_3d"></canvas>
+        <button id="toggle-rotate-btn" onclick="toggleRotation()">▶ Play Rotation</button>
+        <button id="export-btn" onclick="downloadSkin()">⬇ Export Skin</button>
+        <button id="home-btn" onclick="window.location.href='https://cobblemonhistoria.page.gd/index.html#home'" style="position: absolute; top: 20px; right: 150px; width: 120px; background-color: rgba(0,0,0,0.5); border: 1px solid #7f8fa6; cursor: pointer; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 14px; color: white;">🏠 Back to Home</button>
+    </div>
+
+    <div id="right-panel">
+        <div>
+            <h2 id="right-panel-title" style="margin-bottom: 5px;">COLORS</h2>
+            
+            <div id="skin-palette">
+                <span class="color-label">SKIN TONE</span>
+                <input type="range" id="skin-tone-slider" min="0" max="100" value="20">
+            </div>
+
+            <div id="primary-color-container" class="hidden" style="margin-top: 10px;">
+                <span class="color-label" id="primary-color-label">MAIN COLOR</span>
+                <div class="primary-color-picker-group">
+                    <input type="color" id="primary-color-picker" value="#ffffff">
+                    <input type="color" id="primary-color-picker-2" value="#ffffff" class="hidden">
+                </div>
+            </div>
+
+            <div id="secondary-color-container" class="hidden" style="margin-top: 15px;">
+                <span class="color-label">EYEBROW COLOR</span>
+                <input type="color" id="secondary-color-picker" value="#000000">
+            </div>
+
+
+
+            <div id="eyebrow-slider-container" class="hidden" style="margin-top: 15px;">
+                <span class="color-label" id="eyebrow-slider-label">EYEBROW POSITION</span>
+                <input type="range" id="eyebrow-position-slider" min="0" max="3" step="1" value="0">
+                <div style="display:flex; justify-content: space-between; font-size: 12px; color: #7f8fa6; margin-top: 4px;">
+                    <span>BOTTOM</span><span>MID</span><span>MID-TOP</span><span>TOP</span>
+                </div>
+                <label class="toggle-row"><input type="checkbox" id="villager-eyebrows-toggle"> Villager Eyebrows</label>
+                <label class="toggle-row"><input type="checkbox" id="unequip-eyebrows-toggle"> Unequip Eyebrows</label>
+            </div>
+
+            <div id="accessory-panel">
+                <div id="accessory-panel-header">
+                    <span id="accessory-panel-title">Accessories</span>
+                    <button id="accessory-unequip-all-btn" class="back-btn" type="button" style="width:auto; padding: 8px 10px; font-size:12px;">Unequip All</button>
+                </div>
+                <div id="accessory-grid"></div>
+            </div>
+        </div>
+
+        <hr style="width: 100%; border-color: #7f8fa6; margin-top: 5px; border-style: solid; border-width: 1px 0 0 0;">
+        <h2 style="margin-bottom: 0px; font-size: 14px; color: #7f8fa6; letter-spacing: 1px;">EQUIPPED ITEMS</h2>
+        <div id="equipped-list"></div>
+        <div id="right-resizer" class="resizer" style="left: -3px;"></div>
+    </div>
+</div>
+
+<script>
+    let compiledCanvas = null;
+    let activeColorTarget = "base"; 
+
+    let activeLayerOrder = ["socks", "pants", "boots", "shirt", "mouth", "facehair", "eyes", "eyebrows", "hair"];
+
+    function toggleAccordion(btnElement, colorTarget) {
+        const content = btnElement.nextElementSibling;
+        const isCollapsed = content.classList.contains('collapsed');
+        
+        // Toggle classes
+        if (isCollapsed) {
+            content.classList.remove('collapsed');
+            btnElement.classList.add('open');
+            // Update the right panel color picker to match the opened section
+            if (colorTarget) switchScreen(document.querySelector('.ui-screen.active').id, colorTarget);
+        } else {
+            content.classList.add('collapsed');
+            btnElement.classList.remove('open');
+        }
+    }
+
+    function openAccordion(targetName) {
+        if (!targetName) return;
+        // Find the specific button that controls this accordion target
+        const btn = document.querySelector(`.accordion-btn[onclick*="'${targetName}'"]`);
+        if (btn) {
+            const content = btn.nextElementSibling;
+            // If it is closed, pop it open
+            if (content && content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                btn.classList.add('open');
+            }
+            // Smoothly scroll the left panel so the opened section is in view
+            setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        }
+    }
+
+    function getScreenMapData(layerKey) {
+        // Special case: Eyelashes live inside the Eyes accordion
+        if (layerKey === "head_acc_eyelashes") {
+            return { screen: "screen-face-items", accordion: "eyes", colorTarget: "eyes" };
+        }
+        // Face Marks (Scars) live in their own accordion
+        if (["head_acc_scar", "head_acc_bigscar", "head_acc_scar2"].includes(layerKey)) {
+            return { screen: "screen-face-items", accordion: "facemarks", colorTarget: layerKey };
+        }
+        // General Head Accessories (Glasses, Hoods, etc.)
+        if (layerKey.startsWith("head_acc")) {
+            return { screen: "screen-head-acc", accordion: null, colorTarget: layerKey };
+        }
+        // Shirt/Body Accessories
+        if (layerKey.startsWith("shirt_acc")) {
+            return { screen: "screen-body-cats", accordion: "body", colorTarget: layerKey };
+        }
+        // Leg Accessories
+        if (layerKey.startsWith("leg_acc")) {
+            return { screen: "screen-leg-acc", accordion: null, colorTarget: layerKey };
+        }
+
+        // Core Body Parts Map
+        const coreMap = {
+            "base": { screen: "screen-gender", accordion: null, colorTarget: "base" },
+            "hair": { screen: "screen-hair-items", accordion: "hair", colorTarget: "hair" },
+            "eyes": { screen: "screen-face-items", accordion: "eyes", colorTarget: "eyes" },
+            "eyebrows": { screen: "screen-face-items", accordion: "eyebrows", colorTarget: "eyes" },
+            "mouth": { screen: "screen-face-items", accordion: "mouth", colorTarget: "mouth" },
+            "facehair": { screen: "screen-hair-items", accordion: "facehair", colorTarget: "facehair" },
+            "shirt": { screen: "screen-body-cats", accordion: "shirt", colorTarget: "shirt" },
+            "pants": { screen: "screen-body-cats", accordion: "pants", colorTarget: "pants" },
+            "boots": { screen: "screen-body-cats", accordion: "boots", colorTarget: "boots" },
+            "full_body": { screen: "screen-fullbody-items", accordion: null, colorTarget: "full_body" }
+        };
+
+        return coreMap[layerKey];
+    }
+
+    let activeAccessorySection = null;
+    let lastEyebrowSelection = '2x2eyes';
+    let selectedEyeGroup = null;
+
+    const accessorySections = {
+        head: {
+            title: "Head",
+            items: [
+                { layerKey: "head_acc_glasses", file: "glasses", img: "icons/icon_glasses.png", alt: "Glasses" },
+                { layerKey: "head_acc_hood", file: "hood", img: "icons/icon_hood.png", alt: "Hood" },
+                { layerKey: "head_acc_blacksmithgoggles", file: "blacksmithgoggles", img: "icons/icon_blacksmithgoggles.png", alt: "Blacksmith Goggles" },
+                { layerKey: "head_acc_flygoggles", file: "flygoggles", img: "icons/icon_flygoggles.png", alt: "Fly Goggles" },
+                { layerKey: "head_acc_headband", file: "headband", img: "icons/icon_headband.png", alt: "Headband" },
+                { layerKey: "head_acc_tiara", file: "tiara", img: "icons/icon_tiara.png", alt: "Tiara" },
+                { layerKey: "head_acc_grasscrown", file: "grasscrown", img: "icons/icon_grasscrown.png", alt: "Grass Crown" }
+            ],
+            unequipKeys: ["head_acc_glasses", "head_acc_hood", "head_acc_blacksmithgoggles", "head_acc_tiara", "head_acc_flygoggles", "head_acc_headband", "head_acc_grasscrown"]
+        },
+        facemarks: {
+            title: "Face Marks",
+            items: [
+                { layerKey: "head_acc_scar", file: "scar", img: "icons/icon_scar.png", alt: "Scar" },
+                { layerKey: "head_acc_bigscar", file: "bigscar", img: "icons/icon_bigscar.png", alt: "Big Scar" },
+                { layerKey: "head_acc_scar2", file: "scar2", img: "icons/icon_scar2.png", alt: "Scar 2" },
+                { layerKey: "head_acc_eyescar", file: "eyescar", img: "icons/icon_eyescar.png", alt: "Eye Scar" }
+            ],
+            unequipKeys: ["head_acc_scar", "head_acc_bigscar", "head_acc_scar2", "head_acc_eyescar"]
+        },
+        shirt: {
+            title: "Shirt",
+            items: [
+                { layerKey: "shirt_acc_sidebag", file: "sidebag", img: "icons/icon_sidebag.png", alt: "Sidebag" },
+                { layerKey: "shirt_acc_bodybelt", file: "bodybelt", img: "icons/icon_bodybelt.png", alt: "Body Belt" },
+                { layerKey: "shirt_acc_strawhatback", file: "strawhatback", img: "icons/icon_strawhatback.png", alt: "Strawhat Back" },
+                { layerKey: "shirt_acc_backpack", file: "backpack", img: "icons/icon_backpack.png", alt: "Backpack" },
+                { layerKey: "shirt_acc_blacksmithapron", file: "blacksmithapron", img: "icons/icon_blacksmithapron.png", alt: "Blacksmith Apron" }
+            ],
+            unequipKeys: ["shirt_acc_sidebag", "shirt_acc_strawhatback", "shirt_acc_backpack", "shirt_acc_blacksmithapron"]
+        },
+        body: {
+            title: "Body",
+            items: [
+                { layerKey: "shirt_acc_sidebag", file: "sidebag", img: "icons/icon_sidebag.png", alt: "Sidebag" },
+                { layerKey: "shirt_acc_sidebag2", file: "sidebag2", img: "icons/icon_sidebag2.png", alt: "Sidebag 2" },
+                { layerKey: "shirt_acc_bodybelt", file: "bodybelt", img: "icons/icon_bodybelt.png", alt: "Body Belt" },
+                { layerKey: "shirt_acc_strawhatback", file: "strawhatback", img: "icons/icon_strawhatback.png", alt: "Strawhat Back" },
+                { layerKey: "shirt_acc_blacksmithapron", file: "blacksmithapron", img: "icons/icon_blacksmithapron.png", alt: "Blacksmith Apron" }
+            ],
+            unequipKeys: ["shirt_acc_sidebag", "shirt_acc_bodybelt", "shirt_acc_strawhatback", "shirt_acc_blacksmithapron"]
+        },
+        leg: {
+            title: "Leg",
+            items: [
+                { layerKey: "leg_acc_belt", file: "belt", img: "icons/icon_belt.png", alt: "Belt" },
+                { layerKey: "leg_acc_holster", file: "holster", img: "icons/icon_holster.png", alt: "Holster" }
+            ],
+            unequipKeys: ["leg_acc_belt", "leg_acc_holster"]
+        }
+    };
+
+    // Define which items have vertical displacement, and their specific pixel limits
+    // Define which items have vertical displacement, and their specific pixel limits
+    const displaceableConfig = {
+        "mouth": { min: -10, max: 10 },
+        "head_acc_glasses": { min: -3, max: 1 },
+        "shirt_acc_bodybelt": { min: -6, max: 2 },
+        "head_acc_scar": { min: -10, max: 10 },
+        "head_acc_bigscar": { min: -10, max: 10 },
+        "head_acc_scar2": { min: -10, max: 10 },
+        "head_acc_eyescar": { min: -10, max: 10 },
+        "head_acc_grasscrown": { min: -10, max: 10 }
+    };
+
+    // Define which accessories can be flipped horizontally
+    const flippableAccessories = new Set([
+        "head_acc_scar",
+        "head_acc_scar2",
+        "head_acc_bigscar",
+        "head_acc_eyescar"
+    ]);
+
+    // Define horizontal offset (in pixels) for each flippable accessory when flipped
+    const flipOffsetConfig = {
+        "head_acc_scar": -40,
+        "head_acc_scar2": -40,
+        "head_acc_bigscar": -40,
+        "head_acc_eyescar": -40
+    };
+
+    const screenAccessoryMap = {
+        'screen-head-cats': 'head',
+        'screen-hair-items': 'head',
+        'screen-face-items': 'facemarks',
+        'screen-head-acc': 'head',
+        'screen-body-cats': 'body',
+        'screen-leg-acc': 'leg'
+    };
+
+    function getAccessoryIconUrl(fileName) {
+        const baseName = fileName.replace(/\.png$/i, '');
+        return `icons/icon_${baseName}.png`;
+    }
+
+    const eyeGroups = [
+        { id: '2x2', label: '2x2 Eyes', variants: [
+            { value: 'Bottom2x2eyes', label: 'Bottom' },
+            { value: 'LowerMid2x2eyes', label: 'Lower Mid' },
+            { value: 'UpperMid2x2eyes', label: 'Upper Mid' },
+            { value: 'Top2x2eyes', label: 'Top' }
+        ] },
+        { id: '2x1', label: '2x1 Eyes', variants: [
+            { value: 'Bottom2x1eyes', label: 'Bottom' },
+            { value: 'LowerMid2x1eyes', label: 'Lower Mid' },
+            { value: 'UpperMid2x1eyes', label: 'Upper Mid' },
+            { value: 'Top2x1eyes', label: 'Top' }
+        ] },
+        { id: '2x1-derp', label: '2x1 Derp Eyes', variants: [
+            { value: 'Bottom2x1DerpEyes', label: 'Bottom' },
+            { value: 'LowerMid2x1DerpEyes', label: 'Lower Mid' },
+            { value: 'UpperMid2x1DerpEyes', label: 'Upper Mid' },
+            { value: 'Top2x1DerpEyes', label: 'Top' }
+        ] },
+        { id: '2x3', label: '2x3 Eyes', variants: [
+            { value: '2x3Eyes', label: 'Default' }
+        ] },
+        { id: '1x2-simple', label: '1x2 Simple Eyes', variants: [
+            { value: 'Bottom1x2SimpleEyes', label: 'Bottom' },
+            { value: 'Top1x2SimpleEyes', label: 'Top' }
+        ] },
+        { id: '1x3-simple', label: '1x3 Simple Eyelids', variants: [
+            { value: 'Bottom1x3SimpleEyelids', label: 'Bottom' },
+            { value: 'Top1x3SimpleEyelids', label: 'Top' }
+        ] },
+        { id: '1x1-exterior', label: '1x1 Exterior Eyelids', variants: [
+            { value: 'BottomExterior1x1Eyelids', label: 'Bottom' },
+            { value: 'TopExterior1x1Eyelids', label: 'Top' }
+        ] },
+        { id: '1x1-interior', label: '1x1 Interior Eyelids', variants: [
+            { value: 'BottomInterior1x1Eyelids', label: 'Bottom' },
+            { value: 'TopInterior1x1Eyelids', label: 'Top' }
+        ] }
+    ];
+
+    function getGroupForEyeValue(value) {
+        return eyeGroups.find(group => group.variants.some(variant => variant.value === value));
+    }
+
+    function renderEyeGroups() {
+        const grid = document.getElementById('eye-group-grid');
+        if (!grid) return;
+        if (!selectedEyeGroup) {
+            const defaultGroup = getGroupForEyeValue(charState.equipped['eyes']) || eyeGroups[0];
+            selectedEyeGroup = defaultGroup.id;
+        }
+        
+        // Overwrite the old layout class with our clean 2-column grid
+        grid.className = 'equip-grid';
+        grid.innerHTML = '';
+        
+        eyeGroups.forEach(group => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'accessory-btn';
+            btn.title = group.label;
+            btn.innerHTML = `<img src="icons/icon_${group.id}.png" alt="${group.label}">`;
+            btn.onclick = () => selectEyeGroup(group.id);
+            btn.dataset.group = group.id;
+            grid.appendChild(btn);
+        });
+        
+        renderEyeGroupButtons();
+        updateEyePositionControls();
+    }
+
+    function renderEyeGroupButtons() {
+        document.querySelectorAll('#eye-group-grid button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.group === selectedEyeGroup);
+        });
+    }
+
+    function selectEyeGroup(groupId) {
+        const group = eyeGroups.find(g => g.id === groupId);
+        if (!group) return;
+        selectedEyeGroup = groupId;
+        if (!group.variants.some(v => v.value === charState.equipped['eyes'])) {
+            charState.equipped['eyes'] = group.variants[0].value;
+        }
+        if (!activeLayerOrder.includes('eyes')) activeLayerOrder.push('eyes');
+        activeColorTarget = 'eyes';
+        updateEyelashesState(); // Auto-align lashes
+        syncEyelashUI(); // Updates disabled button state
+        renderSkin();
+        renderEyeGroupButtons();
+        updateRightPanelState();
+        updateEyePositionControls();
+    }
+
+    function updateEyePositionControls() {
+        const container = document.getElementById('eye-position-slider-container');
+        const slider = document.getElementById('eye-position-slider');
+        const labels = document.getElementById('eye-position-labels');
+        const label = document.getElementById('eye-position-slider-label');
+        const group = selectedEyeGroup ? eyeGroups.find(g => g.id === selectedEyeGroup) : null;
+        
+        if (!group || activeColorTarget !== 'eyes') {
+            container.classList.add('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        slider.min = 0;
+        slider.max = Math.max(0, group.variants.length - 1);
+        slider.step = 1;
+        const currentIndex = group.variants.findIndex(v => v.value === charState.equipped['eyes']);
+        slider.value = currentIndex >= 0 ? currentIndex : 0;
+        slider.disabled = group.variants.length <= 1;
+        labels.innerHTML = group.variants.map(v => `<span>${v.label}</span>`).join('');
+        label.innerText = group.label + ' POSITION';
+    }
+
+    function setEyePosition(value) {
+        const group = selectedEyeGroup ? eyeGroups.find(g => g.id === selectedEyeGroup) : null;
+        if (!group) return;
+        const index = Math.min(Math.max(0, value), group.variants.length - 1);
+        const variant = group.variants[index];
+        if (variant) {
+            charState.equipped['eyes'] = variant.value;
+            if (!activeLayerOrder.includes('eyes')) activeLayerOrder.push('eyes');
+            updateEyelashesState(); // Auto-align lashes
+            syncEyelashUI(); // Updates disabled button state
+            renderSkin();
+            updateEyePositionControls();
+        }
+    }
+
+    function syncEyelashUI() {
+        const btn = document.getElementById('eyelashes-toggle-btn');
+        if (!btn) return;
+        
+        // 1. Handle Active/Toggled State
+        if (activeLayerOrder.includes('head_acc_eyelashes')) {
+            btn.classList.add('active-acc');
+        } else {
+            btn.classList.remove('active-acc');
+        }
+
+        // 2. Handle Disabled/Unsupported State
+        const currentEye = charState.equipped['eyes'];
+        const group = getGroupForEyeValue(currentEye);
+        const unsupportedEyes = ['1x2-simple', '1x3-simple', '1x1-exterior', '1x1-interior'];
+        
+        if (group && unsupportedEyes.includes(group.id)) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.title = "Eyelashes are not supported with this eye type.";
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.title = "";
+        }
+    }
+
+    function switchScreen(targetScreenId, colorTargetLayer) {
+        document.querySelectorAll('.ui-screen').forEach(screen => screen.classList.remove('active'));
+        document.getElementById(targetScreenId).classList.add('active');
+
+        if (!colorTargetLayer) activeColorTarget = null;
+        activeAccessorySection = null;
+        const accessoryPanel = document.getElementById('accessory-panel');
+        accessoryPanel.classList.remove('visible');
+        accessoryPanel.classList.add('hidden');
+
+        if (screenAccessoryMap[targetScreenId]) {
+            activeAccessorySection = screenAccessoryMap[targetScreenId];
+        }
+
+        if (activeAccessorySection) {
+            renderAccessoryPanel(activeAccessorySection);
+        }
+
+        if (colorTargetLayer) activeColorTarget = colorTargetLayer;
+        if (targetScreenId === 'screen-face-items') {
+            updateEyePositionControls();
+            syncEyelashUI();
+        }
+        updateRightPanelState();
+    }
+
+    function renderAccessoryPanel(section) {
+        const accessoryPanel = document.getElementById('accessory-panel');
+        const title = document.getElementById('accessory-panel-title');
+        const grid = document.getElementById('accessory-grid');
+        const sectionInfo = accessorySections[section];
+
+        if (!sectionInfo) return;
+
+        accessoryPanel.classList.add('visible');
+        accessoryPanel.classList.remove('hidden');
+        title.innerText = sectionInfo.title + ' Accessories';
+        grid.innerHTML = '';
+
+        sectionInfo.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'accessory-btn';
+            btn.dataset.accessory = item.layerKey;
+            btn.title = item.alt;
+            btn.onclick = () => toggleAccessoryFromPanel(item.layerKey, item.file, btn);
+
+            const img = document.createElement('img');
+            img.src = item.img || getAccessoryIconUrl(item.file);
+            img.alt = item.alt;
+            btn.appendChild(img);
+
+            const label = document.createElement('span');
+            label.className = 'accessory-label';
+            label.innerText = item.alt;
+            btn.appendChild(label);
+
+            grid.appendChild(btn);
+        });
+
+        document.getElementById('accessory-unequip-all-btn').onclick = unequipAllCurrentAccessorySection;
+        updateAccessoryPanelButtons(section);
+    }
+
+    function updateAccessoryPanelButtons(section) {
+        if (!section) return;
+        const sectionInfo = accessorySections[section];
+        sectionInfo.items.forEach(item => {
+            const btn = document.querySelector(`[data-accessory="${item.layerKey}"]`);
+            if (btn) btn.classList.toggle('active', charState.equipped[item.layerKey] === item.file);
+        });
+    }
+
+    function updateAccessoryPickers() {
+        if (activeAccessorySection) {
+            updateAccessoryPanelButtons(activeAccessorySection);
+        }
+    }
+
+    function toggleAccessoryFromPanel(layerKey, fileName, btnElement) {
+        const wasEquipped = charState.equipped[layerKey] === fileName;
+        toggleAccessory(layerKey, fileName, btnElement);
+
+        updateAccessoryPanelButtons(activeAccessorySection);
+        updateRightPanelState();
+    }
+
+    function unequipAllCurrentAccessorySection() {
+        if (!activeAccessorySection) return;
+        accessorySections[activeAccessorySection].unequipKeys.forEach(layerKey => {
+            const item = getAccessoryConfig(layerKey);
+            if (item && charState.equipped[layerKey] === item.file) {
+                toggleAccessory(layerKey, item.file);
+            }
+        });
+        activeColorTarget = null;
+        updateAccessoryPanelButtons(activeAccessorySection);
+        updateRightPanelState();
+    }
+
+    function updateRightPanelState() {
+        let pnlTitle = document.getElementById("right-panel-title");
+        let pnlSkin = document.getElementById('skin-palette');
+        let pnlPrimary = document.getElementById('primary-color-container');
+        let pnlSecondary = document.getElementById('secondary-color-container');
+        let lblPrimary = document.getElementById('primary-color-label');
+        let primaryColorPicker2 = document.getElementById('primary-color-picker-2');
+        let eyebrowSlider = document.getElementById('eyebrow-slider-container');
+
+        pnlSkin.classList.add('hidden');
+        pnlPrimary.classList.add('hidden');
+        pnlSecondary.classList.add('hidden');
+        eyebrowSlider.classList.add('hidden');
+        primaryColorPicker2.classList.add('hidden');
+
+        if (activeColorTarget === 'base') {
+            pnlTitle.innerText = "BASE COLOR";
+            pnlSkin.classList.remove('hidden');
+            document.getElementById("skin-tone-slider").value = getSliderValueForSkinTone(charState.colors["base"]);
+        } else if (activeColorTarget === 'eyes') {
+            pnlTitle.innerText = "CUSTOMIZE";
+            pnlSkin.classList.add('hidden');
+            pnlPrimary.classList.remove('hidden');
+            document.getElementById("primary-color-picker").value = charState.colors[activeColorTarget];
+            lblPrimary.innerText = "IRIS COLOR";
+            pnlSecondary.classList.remove('hidden');
+            document.getElementById("secondary-color-picker").value = charState.colors["eyebrows"];
+            document.querySelector("#secondary-color-container .color-label").innerText = "EYEBROW COLOR";
+            eyebrowSlider.classList.remove('hidden');
+            updateEyebrowControls();
+        } else if (activeAccessorySection) {
+            pnlTitle.innerText = "ACCESSORIES";
+            pnlPrimary.classList.remove('hidden');
+            lblPrimary.innerText = getFriendlyLabel(activeColorTarget) + " COLOR 1";
+            document.getElementById("primary-color-picker").value = charState.colors[activeColorTarget] || "#ffffff";
+            pnlSecondary.classList.remove('hidden');
+            document.querySelector("#secondary-color-container .color-label").innerText = getFriendlyLabel(activeColorTarget) + " COLOR 2";
+            document.getElementById("secondary-color-picker").value = charState.colors[activeColorTarget + "_2"] || "#feb44d";
+        } else if (activeColorTarget) {
+            pnlTitle.innerText = "CUSTOMIZE";
+            pnlPrimary.classList.remove('hidden');
+            document.getElementById("primary-color-picker").value = charState.colors[activeColorTarget] || "#ffffff";
+            let cleanLabel = activeColorTarget.replace(/_/g, " ").replace(/(head|shirt|leg) acc /g, "").toUpperCase();
+            lblPrimary.innerText = cleanLabel + " COLOR 1";
+            pnlSecondary.classList.remove('hidden');
+            document.querySelector("#secondary-color-container .color-label").innerText = cleanLabel + " COLOR 2";
+            document.getElementById("secondary-color-picker").value = charState.colors[activeColorTarget + "_2"] || "#feb44d";
+        } else {
+            pnlTitle.innerText = "COLORS";
+            pnlSkin.classList.remove('hidden');
+            document.getElementById("skin-tone-slider").value = getSliderValueForSkinTone(charState.colors["base"]);
+        }
+    }
+
+    function getFriendlyLabel(layerKey) {
+        return layerKey.replace(/_/g, " ").toUpperCase();
+    }
+
+    // The exact 6 colors you chose, converted into RGB format for smooth math blending
+    const skinToneGradient = [
+        {r: 255, g: 219, b: 172}, // #ffdbac (Lightest)
+        {r: 241, g: 194, b: 125}, // #f1c27d
+        {r: 224, g: 172, b: 105}, // #e0ac69
+        {r: 198, g: 134, b: 66},  // #c68642
+        {r: 141, g: 85, b: 36},   // #8d5524
+        {r: 61,  g: 34,  b: 16}   // #3d2210 (Darkest)
+    ];
+
+    // This function translates a slider value (0-100) into a blended Hex Color
+    function getInterpolatedSkinTone(value) {
+        let maxIndex = skinToneGradient.length - 1;
+        let scaledValue = (value / 100) * maxIndex; 
+        
+        let index1 = Math.floor(scaledValue);
+        let index2 = Math.min(Math.ceil(scaledValue), maxIndex);
+        let fraction = scaledValue - index1;
+
+        let c1 = skinToneGradient[index1];
+        let c2 = skinToneGradient[index2];
+
+        // Blend the Red, Green, and Blue values smoothly
+        let r = Math.round(c1.r + (c2.r - c1.r) * fraction);
+        let g = Math.round(c1.g + (c2.g - c1.g) * fraction);
+        let b = Math.round(c1.b + (c2.b - c1.b) * fraction);
+
+        // Convert back to a #HEX string for the canvas to use
+        return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+    }
+
+    // Reverse function: given a hex color, find the closest slider value
+    function getSliderValueForSkinTone(hexColor) {
+        // Convert hex to RGB
+        let r = parseInt(hexColor.slice(1, 3), 16);
+        let g = parseInt(hexColor.slice(3, 5), 16);
+        let b = parseInt(hexColor.slice(5, 7), 16);
+        
+        let minDistance = Infinity;
+        let bestValue = 0;
+        
+        for (let value = 0; value <= 100; value++) {
+            let interpColor = getInterpolatedSkinTone(value);
+            let ir = parseInt(interpColor.slice(1, 3), 16);
+            let ig = parseInt(interpColor.slice(3, 5), 16);
+            let ib = parseInt(interpColor.slice(5, 7), 16);
+            
+            let distance = Math.sqrt((r - ir)**2 + (g - ig)**2 + (b - ib)**2);
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestValue = value;
+            }
+        }
+        
+        return bestValue;
+    }
+
+    function updateEyebrowControls() {
+        const slider = document.getElementById('eyebrow-position-slider');
+        const leftSlider = document.getElementById('left-slider-eyebrows');
+        const label = document.getElementById('eyebrow-slider-label');
+        const villagerCheckbox = document.getElementById('villager-eyebrows-toggle');
+        const unequipCheckbox = document.getElementById('unequip-eyebrows-toggle');
+        const leftVillagerCheckbox = document.getElementById('left-villager-eyebrows-toggle');
+        const leftUnequipCheckbox = document.getElementById('left-unequip-eyebrows-toggle');
+        const eyebrowValue = charState.equipped['eyebrows'];
+        const twoX1Map = ['2x1eyes', '2x2eyes', '2x3eyes', 'topeyes'];
+        const sliderIndex = twoX1Map.indexOf(eyebrowValue);
+        const unequipChecked = (unequipCheckbox && unequipCheckbox.checked) || (leftUnequipCheckbox && leftUnequipCheckbox.checked);
+
+        if (unequipChecked) {
+            if (villagerCheckbox) villagerCheckbox.checked = false;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.checked = false;
+            if (villagerCheckbox) villagerCheckbox.disabled = true;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.disabled = true;
+            if (slider) slider.disabled = true;
+            if (leftSlider) leftSlider.disabled = true;
+            if (unequipCheckbox) unequipCheckbox.checked = true;
+            if (leftUnequipCheckbox) leftUnequipCheckbox.checked = true;
+            label.innerText = 'Unequipped';
+            return;
+        }
+
+        if (villagerCheckbox) villagerCheckbox.disabled = false;
+        if (leftVillagerCheckbox) leftVillagerCheckbox.disabled = false;
+        if (unequipCheckbox) unequipCheckbox.checked = false;
+        if (leftUnequipCheckbox) leftUnequipCheckbox.checked = false;
+
+        if (eyebrowValue === 'villager') {
+            villagerCheckbox.checked = true;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.checked = true;
+            if (slider) {
+                slider.disabled = true;
+                slider.value = 0;
+            }
+            if (leftSlider) {
+                leftSlider.disabled = true;
+                leftSlider.value = 0;
+            }
+            label.innerText = 'Villager';
+        } else {
+            villagerCheckbox.checked = false;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.checked = false;
+            if (slider) slider.disabled = false;
+            if (leftSlider) leftSlider.disabled = false;
+            if (sliderIndex >= 0) {
+                if (slider) slider.value = sliderIndex;
+                if (leftSlider) leftSlider.value = sliderIndex;
+                label.innerText = sliderIndex === 0 ? 'Bottom' : sliderIndex === 1 ? 'Middle' : sliderIndex === 2 ? 'Middle-Top' : 'Top';
+            } else {
+                if (slider) slider.value = 1;
+                if (leftSlider) leftSlider.value = 1;
+                label.innerText = 'Middle';
+            }
+        }
+    }
+
+    function setEyebrowPosition(value) {
+        const map = ['2x1eyes', '2x2eyes', '2x3eyes', 'topeyes'];
+        const selection = map[value] || '2x2eyes';
+        lastEyebrowSelection = selection;
+        charState.equipped['eyebrows'] = selection;
+        const unequipCheckbox = document.getElementById('unequip-eyebrows-toggle');
+        const leftUnequipCheckbox = document.getElementById('left-unequip-eyebrows-toggle');
+        if (unequipCheckbox) unequipCheckbox.checked = false;
+        if (leftUnequipCheckbox) leftUnequipCheckbox.checked = false;
+        if (!activeLayerOrder.includes('eyebrows')) activeLayerOrder.push('eyebrows');
+        renderSkin();
+        updateEyebrowControls();
+    }
+
+    function setEyebrowPreset(preset) {
+        lastEyebrowSelection = preset;
+        charState.equipped['eyebrows'] = preset;
+        if (!activeLayerOrder.includes('eyebrows')) activeLayerOrder.push('eyebrows');
+        renderSkin();
+        updateEyebrowControls();
+        updateRightPanelState();
+        const leftFaceSlider = document.getElementById('left-slider-eyebrows');
+        if (leftFaceSlider && preset !== 'villager') {
+            const map = ['2x1eyes', '2x2eyes', '2x3eyes', 'topeyes'];
+            leftFaceSlider.value = map.indexOf(preset) >= 0 ? map.indexOf(preset) : 1;
+        }
+    }
+
+    function equipMouth(mouthStyle) {
+        charState.equipped['mouth'] = mouthStyle;
+        activeColorTarget = 'mouth';
+        if (!activeLayerOrder.includes('mouth')) activeLayerOrder.push('mouth');
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+        updateRightPanelState();
+    }
+
+    function equipFacehair(facehairStyle) {
+        charState.equipped['facehair'] = facehairStyle;
+        activeColorTarget = 'facehair';
+        if (!activeLayerOrder.includes('facehair')) activeLayerOrder.push('facehair');
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+        updateRightPanelState();
+    }
+
+    function toggleVillagerEyebrows(enabled) {
+        const leftUnequipCheckbox = document.getElementById('left-unequip-eyebrows-toggle');
+        if (enabled) {
+            lastEyebrowSelection = 'villager';
+            document.getElementById('unequip-eyebrows-toggle').checked = false;
+            if (leftUnequipCheckbox) leftUnequipCheckbox.checked = false;
+            charState.equipped['eyebrows'] = 'villager';
+            if (!activeLayerOrder.includes('eyebrows')) activeLayerOrder.push('eyebrows');
+        } else {
+            const slider = document.getElementById('eyebrow-position-slider');
+            setEyebrowPosition(parseInt(slider.value, 10));
+        }
+        renderSkin();
+        updateEyebrowControls();
+    }
+
+    function toggleEyebrowUnequip(enabled) {
+        const villagerCheckbox = document.getElementById('villager-eyebrows-toggle');
+        const leftVillagerCheckbox = document.getElementById('left-villager-eyebrows-toggle');
+        const unequipCheckbox = document.getElementById('unequip-eyebrows-toggle');
+        const leftUnequipCheckbox = document.getElementById('left-unequip-eyebrows-toggle');
+
+        if (enabled) {
+            lastEyebrowSelection = charState.equipped['eyebrows'] || lastEyebrowSelection;
+            charState.equipped['eyebrows'] = null;
+            if (villagerCheckbox) villagerCheckbox.checked = false;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.checked = false;
+            if (villagerCheckbox) villagerCheckbox.disabled = true;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.disabled = true;
+            if (unequipCheckbox) unequipCheckbox.checked = true;
+            if (leftUnequipCheckbox) leftUnequipCheckbox.checked = true;
+        } else {
+            if (unequipCheckbox) unequipCheckbox.checked = false;
+            if (leftUnequipCheckbox) leftUnequipCheckbox.checked = false;
+            if (villagerCheckbox) villagerCheckbox.disabled = false;
+            if (leftVillagerCheckbox) leftVillagerCheckbox.disabled = false;
+            const restore = lastEyebrowSelection || '2x2eyes';
+            charState.equipped['eyebrows'] = restore;
+            if (!activeLayerOrder.includes('eyebrows')) activeLayerOrder.push('eyebrows');
+        }
+        renderSkin();
+        updateEyebrowControls();
+    }
+
+    let skinViewer = new skinview3d.SkinViewer({
+        canvas: document.getElementById("viewer_3d"), width: 350, height: 500
+    });
+    
+    skinViewer.animation = new skinview3d.IdleAnimation();
+    try { new skinview3d.OrbitControls(skinViewer); } catch (e) { try { skinview3d.createOrbitControls(skinViewer); } catch (err) {} }
+    
+    let isMasterRotationOn = false;
+    skinViewer.autoRotate = false;
+    skinViewer.autoRotateSpeed = 0.5;
+    let rotateTimeout;
+
+    function toggleRotation() {
+        isMasterRotationOn = !isMasterRotationOn;
+        skinViewer.autoRotate = isMasterRotationOn;
+        clearTimeout(rotateTimeout); 
+        document.getElementById("toggle-rotate-btn").innerText = isMasterRotationOn ? "⏸ Pause Rotation" : "▶ Play Rotation";
+        document.getElementById("toggle-rotate-btn").style.borderColor = isMasterRotationOn ? "#7f8fa6" : "#e55039";
+    }
+
+    document.getElementById("center-panel").addEventListener("pointerdown", () => {
+        skinViewer.autoRotate = false; 
+        clearTimeout(rotateTimeout);
+    });
+    
+    document.getElementById("center-panel").addEventListener("pointerup", () => {
+        if (isMasterRotationOn) {
+            rotateTimeout = setTimeout(() => { skinViewer.autoRotate = true; }, 1500); 
+        }
+    });
+
+    let charState = {
+        gender: "male", 
+        equipped: { "socks": null, "pants": null, "boots": null, "shirt": null, "full_body": null, "mouth": null, "facehair": null, "eyes": "Bottom2x2eyes", "eyebrows": "2x2eyes", "hair": null },
+        colors: { "base": "#f1c27d", "socks": "#ffffff", "pants": "#1e3799", "boots": "#8B4513", "shirt": "#e55039", "full_body": "#8e44ad", "mouth": "#f1c27d", "eyes": "#3498db", "eyebrows": "#2c3e50", "hair": "#2c3e50", "facehair": "#8B4513", "head_acc_eyelashes": "#000000", "shirt_2": "#feb44d", "pants_2": "#feb44d", "boots_2": "#feb44d", "socks_2": "#feb44d", "full_body_2": "#feb44d", "facehair_2": "#feb44d", "hair_2": "#feb44d" },
+        offsets: {},
+        flips: {},
+        flipOffsets: {}
+    };
+
+    // Cache for tracking which items have _mask2 files
+    let mask2Cache = {};
+
+    function loadImageAsync(url) {
+        return new Promise((resolve) => {
+            let img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = url;
+        });
+    }
+
+    async function drawTintedLayer(ctx, maskUrl, hexColor, detailsUrl = null, excludeImgs = [], mask2Url = null, hexColor2 = null, yOffset = 0, layerKey = null, inclusImg = null) {
+        // Create an isolated canvas for this specific layer
+        let layerCanvas = document.createElement("canvas"); 
+        layerCanvas.width = 64; layerCanvas.height = 64; 
+        let layerCtx = layerCanvas.getContext("2d");
+
+        // Check if this layer is flipped
+        const isFlipped = layerKey && charState.flips[layerKey];
+
+        function drawImageFlipped(targetCtx, image, x = 0, y = 0) {
+            if (isFlipped) {
+                targetCtx.save();
+                targetCtx.scale(-1, 1);
+                targetCtx.drawImage(image, -64 + x, y);
+                targetCtx.restore();
+            } else {
+                targetCtx.drawImage(image, x, y);
+            }
+        }
+
+        // 1. Draw and tint the mask
+        let maskImg = await loadImageAsync(maskUrl);
+        if (maskImg) {
+            let tintCanvas = document.createElement("canvas"); 
+            tintCanvas.width = 64; tintCanvas.height = 64; 
+            let tintCtx = tintCanvas.getContext("2d");
+            
+            drawImageFlipped(tintCtx, maskImg, 0, 0);
+            tintCtx.globalCompositeOperation = "source-in"; 
+            tintCtx.fillStyle = hexColor; 
+            tintCtx.fillRect(0, 0, 64, 64);
+            tintCtx.globalCompositeOperation = "multiply"; 
+            drawImageFlipped(tintCtx, maskImg, 0, 0);
+            
+            layerCtx.drawImage(tintCanvas, 0, 0);
+        }
+
+        // 1B. Draw and tint the second mask if it exists
+        if (mask2Url && hexColor2) {
+            let mask2Img = await loadImageAsync(mask2Url);
+            if (mask2Img) {
+                let tintCanvas = document.createElement("canvas"); 
+                tintCanvas.width = 64; tintCanvas.height = 64; 
+                let tintCtx = tintCanvas.getContext("2d");
+                
+                drawImageFlipped(tintCtx, mask2Img, 0, 0);
+                tintCtx.globalCompositeOperation = "source-in"; 
+                tintCtx.fillStyle = hexColor2; 
+                tintCtx.fillRect(0, 0, 64, 64);
+                tintCtx.globalCompositeOperation = "multiply"; 
+                drawImageFlipped(tintCtx, mask2Img, 0, 0);
+                
+                layerCtx.drawImage(tintCanvas, 0, 0);
+            }
+        }
+        
+        // 2. Add the untinted details on top
+        if (detailsUrl) { 
+            let detailsImg = await loadImageAsync(detailsUrl); 
+            if (detailsImg) {
+                drawImageFlipped(layerCtx, detailsImg, 0, 0);
+            }
+        }
+
+        // 3. THE MAGIC: Apply exclusions (Erases pixels where the exclude image is opaque)
+        if (excludeImgs && excludeImgs.length > 0) {
+            layerCtx.globalCompositeOperation = "destination-out";
+            for (let ex of excludeImgs) {
+                if (ex && ex.img) {
+                    // Draw the exclude mask using its OWN offset and flip state
+                    if (ex.isFlipped) {
+                        layerCtx.save();
+                        layerCtx.scale(-1, 1);
+                        layerCtx.drawImage(ex.img, -64 + ex.flipOffset, ex.yOffset);
+                        layerCtx.restore();
+                    } else {
+                        layerCtx.drawImage(ex.img, ex.flipOffset, ex.yOffset);
+                    }
+                }
+            }
+            layerCtx.globalCompositeOperation = "source-over"; // Reset back to normal
+        }
+
+        // 4. Calculate horizontal offset (works for both flipped and unflipped states)
+        let xOffset = 0;
+        if (layerKey && charState.flipOffsets[layerKey] !== undefined) {
+            // Apply manual user offset if it exists
+            xOffset = charState.flipOffsets[layerKey];
+        } else if (isFlipped && layerKey) {
+            // Default offset when flipped
+            xOffset = flipOffsetConfig[layerKey] || -40; 
+        } else {
+            // Default offset when normal
+            xOffset = 0; 
+        }
+
+        // 5. Stamp this completed layer onto the main character canvas (with boundary clipping)
+        if (inclusImg) {
+            let boundedCanvas = document.createElement("canvas"); 
+            boundedCanvas.width = 64; boundedCanvas.height = 64; 
+            let boundedCtx = boundedCanvas.getContext("2d");
+            
+            // Draw the offset layer first
+            boundedCtx.drawImage(layerCanvas, xOffset, yOffset);
+            
+            // Erase the out-of-bounds areas using destination-out with the stationary _inclus image
+            boundedCtx.globalCompositeOperation = "destination-out";
+            boundedCtx.drawImage(inclusImg, 0, 0); // Drawn at 0,0 so it stays locked to the body
+            boundedCtx.globalCompositeOperation = "source-over";
+            
+            // Stamp the safely clipped layer onto the main canvas
+            ctx.drawImage(boundedCanvas, 0, 0);
+        } else {
+            // Normal stamp if no inclusion mask exists
+            ctx.drawImage(layerCanvas, xOffset, yOffset);
+        }
+    }
+
+    let draggedLayerKey = null;
+
+    function updateEquippedListUI() {
+        const listContainer = document.getElementById("equipped-list");
+        listContainer.innerHTML = ""; 
+
+        function createItemUI(layerKey, displayName, canRemove) {
+            const itemDiv = document.createElement("div");
+            itemDiv.className = "equipped-item";
+            if (!canRemove) itemDiv.classList.add("equipped-base");
+            
+            itemDiv.onclick = (e) => {
+                let mapData = getScreenMapData(layerKey);
+                if (mapData) {
+                    // 1. Switch to the correct screen
+                    switchScreen(mapData.screen, mapData.colorTarget);
+                    // 2. Open the specific accordion (if it exists)
+                    if (mapData.accordion) {
+                        openAccordion(mapData.accordion);
+                    }
+                }
+            };
+
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "equipped-name";
+            nameSpan.innerText = displayName;
+            itemDiv.appendChild(nameSpan);
+
+            if (canRemove) {
+                // Add color picker(s) if the item has a color
+                if (charState.colors[layerKey]) {
+                    const colorPickerWrapper = document.createElement("div");
+                    colorPickerWrapper.style.display = "flex";
+                    colorPickerWrapper.style.gap = "6px";
+                    colorPickerWrapper.addEventListener("click", (e) => e.stopPropagation());
+                    colorPickerWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
+
+                    const primaryPicker = document.createElement("input");
+                    primaryPicker.type = "color";
+                    primaryPicker.className = "box-picker";
+                    primaryPicker.style.width = "35px";
+                    primaryPicker.style.height = "35px";
+                    primaryPicker.style.padding = "0";
+                    primaryPicker.style.border = "none";
+                    primaryPicker.style.outline = "none";
+                    primaryPicker.style.borderRadius = "6px";
+                    primaryPicker.style.cursor = "pointer";
+                    primaryPicker.value = charState.colors[layerKey];
+                    primaryPicker.addEventListener("input", (e) => {
+                        charState.colors[layerKey] = e.target.value;
+                        renderSkin();
+                    });
+                    colorPickerWrapper.appendChild(primaryPicker);
+
+                    if (layerKey !== 'eyes' && layerKey !== 'eyebrows') {
+                        const secondaryPicker = document.createElement("input");
+                        secondaryPicker.type = "color";
+                        secondaryPicker.className = "box-picker";
+                        secondaryPicker.style.width = "35px";
+                        secondaryPicker.style.height = "35px";
+                        secondaryPicker.style.padding = "0";
+                        secondaryPicker.style.border = "none";
+                        secondaryPicker.style.outline = "none";
+                        secondaryPicker.style.borderRadius = "6px";
+                        secondaryPicker.style.cursor = "pointer";
+                        secondaryPicker.value = charState.colors[layerKey + "_2"] || "#feb44d";
+                        secondaryPicker.addEventListener("input", (e) => {
+                            charState.colors[layerKey + "_2"] = e.target.value;
+                            renderSkin();
+                        });
+                        colorPickerWrapper.appendChild(secondaryPicker);
+                    }
+
+                    itemDiv.appendChild(colorPickerWrapper);
+
+                    if (displaceableConfig[layerKey]) {
+                        let config = displaceableConfig[layerKey];
+                        const offsetWrapper = document.createElement("div");
+                        offsetWrapper.className = "color-box-row";
+                        offsetWrapper.style.marginTop = "8px";
+                        offsetWrapper.style.padding = "6px 10px";
+
+                        const offsetLabel = document.createElement("span");
+                        offsetLabel.className = "color-box-label";
+                        offsetLabel.innerText = "UP / DOWN";
+                        offsetLabel.style.fontSize = "12px";
+                        offsetLabel.style.color = "#7f8fa6";
+                        offsetLabel.style.fontWeight = "bold";
+
+                        const offsetSlider = document.createElement("input");
+                        offsetSlider.type = "range";
+                        offsetSlider.min = config.min.toString();
+                        offsetSlider.max = config.max.toString();
+                        offsetSlider.value = charState.offsets[layerKey] || 0;
+                        offsetSlider.style.width = "80px";
+                        offsetSlider.addEventListener("input", (e) => {
+                            charState.offsets[layerKey] = parseInt(e.target.value, 10);
+                            renderSkin();
+                        });
+
+                        let resetOffsetBtn = document.createElement("button");
+                        resetOffsetBtn.innerText = "↺";
+                        resetOffsetBtn.style.width = "24px";
+                        resetOffsetBtn.style.height = "24px";
+                        resetOffsetBtn.style.padding = "0";
+                        resetOffsetBtn.style.marginLeft = "8px";
+                        resetOffsetBtn.style.backgroundColor = "#7f8fa6";
+                        resetOffsetBtn.style.border = "none";
+                        resetOffsetBtn.style.borderRadius = "4px";
+                        resetOffsetBtn.style.color = "white";
+                        resetOffsetBtn.style.cursor = "pointer";
+                        resetOffsetBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            charState.offsets[layerKey] = 0;
+                            offsetSlider.value = 0;
+                            renderSkin();
+                        });
+
+                        offsetWrapper.appendChild(offsetLabel);
+                        offsetWrapper.appendChild(offsetSlider);
+                        offsetWrapper.appendChild(resetOffsetBtn);
+
+                        offsetWrapper.addEventListener("mouseenter", () => {
+                            itemDiv.draggable = false;
+                        });
+                        offsetWrapper.addEventListener("mouseleave", () => {
+                            itemDiv.draggable = true;
+                        });
+                        offsetWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
+                        offsetWrapper.addEventListener("touchstart", (e) => e.stopPropagation());
+
+                        itemDiv.appendChild(offsetWrapper);
+                    }
+
+                    // Add flip checkbox for flippable accessories
+                    // Add flip and horizontal offset controls
+                    if (flippableAccessories.has(layerKey)) {
+                        const flipWrapper = document.createElement("div");
+                        flipWrapper.className = "flip-checkbox-row";
+                        flipWrapper.style.marginTop = "8px";
+                        flipWrapper.style.padding = "6px 10px";
+                        flipWrapper.style.display = "flex";
+                        flipWrapper.style.flexDirection = "column";
+                        flipWrapper.style.gap = "8px";
+
+                        // --- ROW 1: Slider ---
+                        const sliderRow = document.createElement("div");
+                        sliderRow.style.display = "flex";
+                        sliderRow.style.alignItems = "center";
+                        
+                        const offsetLabel = document.createElement("span");
+                        offsetLabel.innerText = "LEFT / RIGHT";
+                        offsetLabel.style.fontSize = "12px";
+                        offsetLabel.style.color = "#7f8fa6";
+                        offsetLabel.style.fontWeight = "bold";
+                        offsetLabel.style.flexGrow = "1";
+
+                        const flipOffsetSlider = document.createElement("input");
+                        flipOffsetSlider.type = "range";
+                        flipOffsetSlider.min = "-64";
+                        flipOffsetSlider.max = "64";
+                        let defaultOffset = charState.flips[layerKey] ? (flipOffsetConfig[layerKey] || -40) : 0;
+                        flipOffsetSlider.value = charState.flipOffsets[layerKey] !== undefined ? charState.flipOffsets[layerKey] : defaultOffset;
+                        flipOffsetSlider.style.width = "80px";
+                        flipOffsetSlider.style.cursor = "pointer";
+                        flipOffsetSlider.addEventListener("input", (e) => {
+                            charState.flipOffsets[layerKey] = parseInt(e.target.value, 10);
+                            renderSkin();
+                        });
+
+                        sliderRow.appendChild(offsetLabel);
+                        sliderRow.appendChild(flipOffsetSlider);
+
+                        // --- ROW 2: Checkbox & Reset ---
+                        const controlsRow = document.createElement("div");
+                        controlsRow.style.display = "flex";
+                        controlsRow.style.alignItems = "center";
+                        controlsRow.style.gap = "8px";
+
+                        const flipCheckbox = document.createElement("input");
+                        flipCheckbox.type = "checkbox";
+                        flipCheckbox.style.width = "16px";
+                        flipCheckbox.style.height = "16px";
+                        flipCheckbox.style.accentColor = "#4CAF50";
+                        flipCheckbox.style.cursor = "pointer";
+                        flipCheckbox.checked = charState.flips[layerKey] || false;
+
+                        const flipLabel = document.createElement("label");
+                        flipLabel.style.fontSize = "12px";
+                        flipLabel.style.color = "#f5f6fa";
+                        flipLabel.style.fontWeight = "bold";
+                        flipLabel.style.userSelect = "none";
+                        flipLabel.style.cursor = "pointer";
+                        flipLabel.innerText = "Flip";
+                        
+                        const toggleFlip = (e) => {
+                            if (e && e.type === 'click') {
+                                flipCheckbox.checked = !flipCheckbox.checked;
+                            }
+                            charState.flips[layerKey] = flipCheckbox.checked;
+                            // Delete manual offset so it snaps beautifully to the new flipped/unflipped default
+                            delete charState.flipOffsets[layerKey]; 
+                            flipOffsetSlider.value = charState.flips[layerKey] ? (flipOffsetConfig[layerKey] || -40) : 0;
+                            renderSkin();
+                        };
+                        
+                        flipCheckbox.addEventListener("change", toggleFlip);
+                        flipLabel.addEventListener("click", toggleFlip);
+
+                        let resetBtn = document.createElement("button");
+                        resetBtn.innerText = "↺";
+                        resetBtn.style.width = "24px";
+                        resetBtn.style.height = "24px";
+                        resetBtn.style.padding = "0";
+                        resetBtn.style.marginLeft = "auto"; // Pushes button to the right edge
+                        resetBtn.style.backgroundColor = "#7f8fa6";
+                        resetBtn.style.border = "none";
+                        resetBtn.style.borderRadius = "4px";
+                        resetBtn.style.color = "white";
+                        resetBtn.style.cursor = "pointer";
+                        resetBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            delete charState.flipOffsets[layerKey];
+                            flipOffsetSlider.value = charState.flips[layerKey] ? (flipOffsetConfig[layerKey] || -40) : 0;
+                            renderSkin();
+                        });
+
+                        controlsRow.appendChild(flipCheckbox);
+                        controlsRow.appendChild(flipLabel);
+                        controlsRow.appendChild(resetBtn);
+
+                        flipWrapper.appendChild(sliderRow);
+                        flipWrapper.appendChild(controlsRow);
+
+                        // Disable drag-and-drop when interacting with controls
+                        flipWrapper.addEventListener("mouseenter", () => { itemDiv.draggable = false; });
+                        flipWrapper.addEventListener("mouseleave", () => { itemDiv.draggable = true; });
+                        flipWrapper.addEventListener("mousedown", (e) => e.stopPropagation());
+                        flipWrapper.addEventListener("touchstart", (e) => e.stopPropagation());
+
+                        itemDiv.appendChild(flipWrapper);
+                    }
+                }
+
+                itemDiv.draggable = true; itemDiv.dataset.layer = layerKey;
+                itemDiv.addEventListener('dragstart', function(e) { draggedLayerKey = this.dataset.layer; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+                itemDiv.addEventListener('dragover', function(e) { e.preventDefault(); if (this.dataset.layer !== draggedLayerKey) this.classList.add('drag-over'); });
+                itemDiv.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+                itemDiv.addEventListener('dragend', function() { this.classList.remove('dragging'); document.querySelectorAll('.equipped-item').forEach(el => el.classList.remove('drag-over')); });
+                itemDiv.addEventListener('drop', function(e) {
+                    e.stopPropagation(); this.classList.remove('drag-over');
+                    let targetLayerKey = this.dataset.layer;
+                    if (draggedLayerKey && draggedLayerKey !== targetLayerKey) {
+                        let fromIndex = activeLayerOrder.indexOf(draggedLayerKey); let toIndex = activeLayerOrder.indexOf(targetLayerKey);
+                        activeLayerOrder.splice(fromIndex, 1); activeLayerOrder.splice(toIndex, 0, draggedLayerKey);
+                        renderSkin();
+                        updateEquippedListUI();
+                        updateAccessoryPickers();
+                    }
+                });
+
+                const removeBtn = document.createElement("button");
+                removeBtn.className = "remove-btn"; removeBtn.innerText = "X";
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation(); 
+                    if(layerKey.includes("_acc_")) { toggleAccessory(layerKey, charState.equipped[layerKey]); } 
+                    else { equipPart(layerKey, null); }
+                };
+                itemDiv.appendChild(removeBtn);
+            }
+            listContainer.appendChild(itemDiv);
+        }
+
+        let reversedLayers = [...activeLayerOrder].reverse();
+        for (let layer of reversedLayers) {
+            if (charState.equipped[layer]) {
+                let cleanName;
+                if (layer === 'eyebrows') {
+                    const eyebrowMap = {
+                        '2x1eyes': 'Bottom Eyebrows',
+                        '2x2eyes': 'Mid Eyebrows',
+                        '2x3eyes': 'Mid-Top Eyebrows',
+                        'topeyes': 'Top Eyebrows',
+                        'villager': 'Villager Eyebrows'
+                    };
+                    cleanName = eyebrowMap[charState.equipped[layer]] || charState.equipped[layer];
+                } else if (layer.includes("_acc_")) {
+                    cleanName = layer.replace(/_/g, " ").replace(/(head|shirt|leg) acc /g, "");
+                } else {
+                    cleanName = charState.equipped[layer].replace(".png", "").replace(/_/g, " ");
+                }
+                createItemUI(layer, cleanName, true);
+            }
+        }
+        createItemUI("base", charState.gender + " Base", false);
+    }
+
+    async function renderSkin() {
+        let canvas = document.createElement("canvas"); canvas.width = 64; canvas.height = 64; let ctx = canvas.getContext("2d");
+        
+        // 1. GATHER EXCLUDE IMAGES
+        let activeExcludes = [];
+        for (let layer of activeLayerOrder) {
+            if (charState.equipped[layer]) {
+                let asset = charState.equipped[layer];
+                let baseName = asset.endsWith('.png') ? asset.replace('.png', '') : asset;
+                let excludeImg = await loadImageAsync(`${baseName}_exclude.png`);
+                if (excludeImg) {
+                    activeExcludes.push({ 
+                        layerKey: layer, 
+                        img: excludeImg,
+                        yOffset: charState.offsets[layer] || 0,
+                        isFlipped: charState.flips[layer] || false,
+                        flipOffset: charState.flipOffsets[layer] !== undefined ? charState.flipOffsets[layer] : (charState.flips[layer] ? (flipOffsetConfig[layer] || -40) : 0)
+                    });
+                }
+            }
+        }
+
+        // 2. DRAW BASE BODY
+        let baseMaskUrl = `base_${charState.gender}_mask.png`; let baseDetailsUrl = `base_${charState.gender}_details.png`;
+        let baseMaskImg = await loadImageAsync(baseMaskUrl);
+        
+        if (baseMaskImg) { 
+            await drawTintedLayer(ctx, baseMaskUrl, charState.colors["base"], baseDetailsUrl, [], null, null, 0, null); 
+        } else {
+            let armWidth = charState.gender === 'female' ? 3 : 4; ctx.fillStyle = charState.colors["base"];
+            ctx.fillRect(8, 8, 8, 8); ctx.fillRect(20, 20, 8, 12); ctx.fillRect(44, 20, armWidth, 12); ctx.fillRect(36, 52, armWidth, 12); ctx.fillRect(4, 20, 4, 12); ctx.fillRect(20, 52, 4, 12); 
+        }
+
+        let clothesCanvas = document.createElement("canvas");
+        clothesCanvas.width = 64;
+        clothesCanvas.height = 64;
+        let clothesCtx = clothesCanvas.getContext("2d");
+
+        // 3. DRAW LAYERS (WITH Z-INDEX EXCLUSION LOGIC)
+        for (let i = 0; i < activeLayerOrder.length; i++) {
+            let layer = activeLayerOrder[i];
+            
+            if (charState.equipped[layer]) {
+                
+                let layerExcludes = [];
+                // Eyes and Eyebrows are completely immune to exclusions
+                if (layer !== "eyes" && layer !== "eyebrows") {
+                    
+                    // THE FIX: Only apply exclusions if the item causing the exclusion is BELOW this item in the layer order (drawn later, so on top)!
+                    layerExcludes = activeExcludes.filter(ex => {
+                        let excluderIndex = activeLayerOrder.indexOf(ex.layerKey);
+                        return excluderIndex > i && ex.layerKey !== layer; // Only keep it if its index is higher (below in list) and not from itself
+                    });
+                }
+
+                if (layer === "eyes") {
+                    let baseName = charState.equipped[layer]; 
+                    await drawTintedLayer(clothesCtx, `${baseName}_skin.png`, charState.colors["base"], null, [], null, null, 0, null);
+                    await drawTintedLayer(clothesCtx, `${baseName}_mask.png`, charState.colors["eyes"], `${baseName}_detail.png`, [], null, null, 0, null);
+                } else if (layer === "eyebrows") {
+                    let baseName = charState.equipped[layer];
+                    await drawTintedLayer(clothesCtx, `${baseName}_eyebrows_skin.png`, charState.colors["base"], null, [], null, null, 0, null);
+                    await drawTintedLayer(clothesCtx, `${baseName}_eyebrows.png`, charState.colors["eyebrows"], null, [], null, null, 0, null);
+                } else {
+                    let asset = charState.equipped[layer];
+                    let maskUrl = asset; let detailsUrl = null;
+                    let baseName = asset.endsWith('.png') ? asset.replace('.png', '') : asset;
+                    
+                    if (!asset.endsWith('.png')) { 
+                        maskUrl = `${asset}_mask.png`; 
+                        detailsUrl = `${asset}_detail.png`; 
+                    }
+                    
+                    let currentOffset = charState.offsets[layer] || 0;
+                    
+                    // Load the inclusion mask if it exists (e.g., scar_inclus.png)
+                    let inclusImg = await loadImageAsync(`${baseName}_inclus.png`);
+
+                    // NEW: Check for and draw a dynamic skin layer matched to the base body color
+                    let skinUrl = `${baseName}_skin.png`;
+                    let skinCheck = await loadImageAsync(skinUrl);
+                    if (skinCheck) {
+                        await drawTintedLayer(clothesCtx, skinUrl, charState.colors["base"], null, layerExcludes, null, null, currentOffset, layer, inclusImg);
+                    }
+
+                    // Draw the layer, applying exclusions and the inclusion boundary mask
+                    await drawTintedLayer(clothesCtx, maskUrl, charState.colors[layer], detailsUrl, layerExcludes, null, null, currentOffset, layer, inclusImg);
+
+                    let mask2Url = asset.endsWith('.png') ? asset.replace('.png', '_mask2.png') : `${asset}_mask2.png`;
+                    let mask2Color = charState.colors[layer + "_2"] || "#feb44d";
+                    let mask2Check = await loadImageAsync(mask2Url);
+                    
+                    if (mask2Check) {
+                        await drawTintedLayer(clothesCtx, mask2Url, mask2Color, null, layerExcludes, null, null, currentOffset, layer, inclusImg);
+                    }
+                }
+            }
+        }
+
+        // Post-processing for slim model arm fix (two-pass system)
+        if (charState.gender === 'female') {
+            // Take a snapshot of the original clothing pixels
+            let originalCanvas = document.createElement('canvas');
+            originalCanvas.width = 64;
+            originalCanvas.height = 64;
+            let originalCtx = originalCanvas.getContext('2d');
+            originalCtx.drawImage(clothesCanvas, 0, 0);
+
+            // Load both masks
+            let slimfixMask = await loadImageAsync('slimfix_mask.png');
+            let slimfixMask2 = await loadImageAsync('slimfix_mask2.png');
+
+            // Pass 1: Shift by -1
+            if (slimfixMask) {
+                let temp1 = document.createElement('canvas');
+                temp1.width = 64;
+                temp1.height = 64;
+                let temp1Ctx = temp1.getContext('2d');
+                // Draw original onto temp1
+                temp1Ctx.drawImage(originalCanvas, 0, 0);
+                // Isolate pixels under mask1
+                temp1Ctx.globalCompositeOperation = 'destination-in';
+                temp1Ctx.drawImage(slimfixMask, 0, 0);
+
+                // Clear destination area before stamping shifted pixels
+                clothesCtx.globalCompositeOperation = 'destination-out';
+                clothesCtx.drawImage(slimfixMask, -1, 0);
+                clothesCtx.globalCompositeOperation = 'source-over';
+
+                // Shift and stamp onto clothing canvas
+                clothesCtx.drawImage(temp1, -1, 0);
+            }
+
+            // Pass 2: Shift by -2
+            if (slimfixMask2) {
+                let temp2 = document.createElement('canvas');
+                temp2.width = 64;
+                temp2.height = 64;
+                let temp2Ctx = temp2.getContext('2d');
+                // Draw ORIGINAL onto temp2 (not the modified clothing canvas)
+                temp2Ctx.drawImage(originalCanvas, 0, 0);
+                // Isolate pixels under mask2
+                temp2Ctx.globalCompositeOperation = 'destination-in';
+                temp2Ctx.drawImage(slimfixMask2, 0, 0);
+
+                // Clear destination area before stamping shifted pixels
+                clothesCtx.globalCompositeOperation = 'destination-out';
+                clothesCtx.drawImage(slimfixMask2, -2, 0);
+                clothesCtx.globalCompositeOperation = 'source-over';
+
+                // Shift and stamp onto clothing canvas
+                clothesCtx.drawImage(temp2, -2, 0);
+            }
+        }
+
+        // Merge clothing back over base body
+        ctx.drawImage(clothesCanvas, 0, 0);
+
+        compiledCanvas = canvas;
+        let skinType = charState.gender === 'female' ? "slim" : "default";
+        try { skinViewer.loadSkin(canvas.toDataURL("image/png"), { model: skinType }); } catch (e) {}
+        syncLeftSliders();
+    }
+
+    function syncLeftSliders() {
+        const mouthSlider = document.getElementById('left-slider-mouth');
+        if (mouthSlider) mouthSlider.value = charState.offsets['mouth'] ?? 0;
+    }
+
+    function selectGender(gender) { 
+        charState.gender = gender; 
+        
+        if (gender === 'female') {
+            if (!charState.colors['head_acc_eyelashes']) charState.colors['head_acc_eyelashes'] = '#000000';
+            if (!activeLayerOrder.includes('head_acc_eyelashes')) activeLayerOrder.push('head_acc_eyelashes');
+            updateEyelashesState(); // Calculate correct eyelashes for female default
+            charState.equipped["eyebrows"] = null;
+        } else if (gender === 'male') {
+            charState.equipped['head_acc_eyelashes'] = null;
+            activeLayerOrder = activeLayerOrder.filter(l => l !== 'head_acc_eyelashes');
+            charState.equipped["eyebrows"] = "2x2eyes";
+        }
+        
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+        syncEyelashUI();
+        switchScreen('screen-categories', 'base'); 
+    }
+    
+    function equipPart(layerName, fileName) {
+        charState.equipped[layerName] = fileName;
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+        
+        // Highlights the active box in the grid with a green border
+        document.querySelectorAll(`.accessory-btn[data-equip-layer="${layerName}"]`).forEach(btn => {
+            if (btn.dataset.equipFile === fileName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function toggleAccessory(layerKey, fileName, btnElement) {
+        if (charState.equipped[layerKey] === fileName) {
+            charState.equipped[layerKey] = null;
+            activeLayerOrder = activeLayerOrder.filter(l => l !== layerKey);
+            if(btnElement) btnElement.classList.remove("active");
+        } else {
+            charState.equipped[layerKey] = fileName;
+            if (!charState.colors[layerKey]) charState.colors[layerKey] = "#ffffff"; 
+            if (!activeLayerOrder.includes(layerKey)) activeLayerOrder.push(layerKey); 
+            if(btnElement) btnElement.classList.add("active");
+        }
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+    }
+
+    function downloadSkin() {
+        if (!compiledCanvas) return alert("No skin compiled yet!");
+        compiledCanvas.toBlob((blob) => {
+            let url = URL.createObjectURL(blob); let link = document.createElement("a"); link.href = url; link.download = `skin_${new Date().getTime()}.png`; link.click(); URL.revokeObjectURL(url);
+        });
+    }
+
+    function exportLayout() {
+        // Package the current state into a single object
+        const layoutData = {
+            charState: charState,
+            activeLayerOrder: activeLayerOrder
+        };
+        
+        // Convert the object to a formatted JSON string
+        const dataStr = JSON.stringify(layoutData, null, 2);
+        
+        // Create a blob and trigger the download
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `layout_${new Date().getTime()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importLayout(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Parse the JSON text back into a JavaScript object
+                const importedData = JSON.parse(e.target.result);
+                
+                if (importedData.charState && importedData.activeLayerOrder) {
+                    // Overwrite the current state with the imported state
+                    charState = importedData.charState;
+                    activeLayerOrder = importedData.activeLayerOrder;
+                    
+                    // Safety check: Ensure nested objects exist in case of older format imports
+                    if (!charState.offsets) charState.offsets = {};
+                    if (!charState.flips) charState.flips = {};
+                    if (!charState.flipOffsets) charState.flipOffsets = {};
+
+                    // Force the UI and Canvas to completely refresh
+                    renderSkin();
+                    updateEquippedListUI();
+                    updateRightPanelState();
+                    updateAccessoryPickers();
+                    syncEyelashUI();
+                    syncLeftSliders();
+                    
+                    console.log("Layout imported successfully!");
+                } else {
+                    alert("Invalid layout file format. Missing character data.");
+                }
+            } catch (error) {
+                alert("Error reading the layout file. Make sure it's a valid JSON file.");
+            }
+            
+            // Clear the input so the user can import the exact same file again if needed
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    document.getElementById("primary-color-picker").addEventListener("input", (e) => { charState.colors[activeColorTarget] = e.target.value; renderSkin(); });
+    document.getElementById("primary-color-picker-2").addEventListener("input", (e) => { 
+        charState.colors[activeColorTarget + "_2"] = e.target.value; 
+        renderSkin(); 
+    });
+    document.getElementById("secondary-color-picker").addEventListener("input", (e) => {
+        if (activeColorTarget === 'eyes') charState.colors["eyebrows"] = e.target.value;
+        else if (activeColorTarget === 'eyebrows') charState.colors["eyes"] = e.target.value;
+        else charState.colors[activeColorTarget + "_2"] = e.target.value;
+        renderSkin();
+    });
+
+    document.getElementById('eyebrow-position-slider').addEventListener('input', (e) => {
+        if (!document.getElementById('villager-eyebrows-toggle').checked) {
+            setEyebrowPosition(parseInt(e.target.value, 10));
+            updateEyebrowControls();
+        }
+    });
+
+    document.getElementById('eye-position-slider').addEventListener('input', (e) => {
+        setEyePosition(parseInt(e.target.value, 10));
+    });
+
+    function updateEyelashesState() {
+        // Only run if the user has toggled eyelashes ON
+        if (!activeLayerOrder.includes('head_acc_eyelashes')) return;
+
+        const currentEye = charState.equipped['eyes'];
+        const group = getGroupForEyeValue(currentEye);
+        if (!group) return;
+
+        // 1. Check for Unsupported Eyes
+        const unsupportedEyes = ['1x2-simple', '1x3-simple', '1x1-exterior', '1x1-interior'];
+        if (unsupportedEyes.includes(group.id)) {
+            // Temporarily unequip the texture, but keep it in the active layer memory
+            charState.equipped['head_acc_eyelashes'] = null;
+            return;
+        }
+
+        // 2. Calculate Supported Eyes
+        const step = Math.max(0, group.variants.findIndex(v => v.value === currentEye));
+
+        if (group.id === '2x2') {
+            if (step === 0) {
+                charState.equipped['head_acc_eyelashes'] = 'Eyelashes2x2Eyes_mask.png';
+                charState.offsets['head_acc_eyelashes'] = 0;
+            } else {
+                charState.equipped['head_acc_eyelashes'] = 'Eyelashes2x2EyesNT_mask.png';
+                charState.offsets['head_acc_eyelashes'] = -(step - 1);
+            }
+        } else if (group.id === '2x3') {
+            charState.equipped['head_acc_eyelashes'] = 'Eyelashes2x3Eyes_mask.png';
+            charState.offsets['head_acc_eyelashes'] = 0;
+        } else {
+            // Covers both '2x1' and '2x1-derp'
+            charState.equipped['head_acc_eyelashes'] = 'Eyelashes2x1Eyes_mask.png';
+            charState.offsets['head_acc_eyelashes'] = -step; 
+        }
+    }
+
+    function toggleEyelashes(btnElement) {
+        const isEquipped = activeLayerOrder.includes('head_acc_eyelashes');
+
+        if (isEquipped) {
+            // Turn Off
+            charState.equipped['head_acc_eyelashes'] = null;
+            activeLayerOrder = activeLayerOrder.filter(l => l !== 'head_acc_eyelashes');
+            if (btnElement) btnElement.classList.remove('active-acc');
+        } else {
+            // Turn On
+            if (!charState.colors['head_acc_eyelashes']) charState.colors['head_acc_eyelashes'] = '#000000';
+            activeLayerOrder.push('head_acc_eyelashes');
+            updateEyelashesState(); // Calculate correct placement instantly
+            if (btnElement) btnElement.classList.add('active-acc');
+        }
+        
+        renderSkin();
+        updateEquippedListUI();
+        updateAccessoryPickers();
+    }
+
+    const leftEyebrowSlider = document.getElementById('left-slider-eyebrows');
+    if (leftEyebrowSlider) {
+        leftEyebrowSlider.addEventListener('input', (e) => {
+            setEyebrowPosition(parseInt(e.target.value, 10));
+        });
+    }
+
+    const leftVillagerToggle = document.getElementById('left-villager-eyebrows-toggle');
+    if (leftVillagerToggle) {
+        leftVillagerToggle.addEventListener('change', (e) => {
+            toggleVillagerEyebrows(e.target.checked);
+            updateEyebrowControls();
+        });
+    }
+
+    const leftUnequipToggle = document.getElementById('left-unequip-eyebrows-toggle');
+    if (leftUnequipToggle) {
+        leftUnequipToggle.addEventListener('change', (e) => {
+            toggleEyebrowUnequip(e.target.checked);
+        });
+    }
+
+    document.getElementById('villager-eyebrows-toggle').addEventListener('change', (e) => {
+        toggleVillagerEyebrows(e.target.checked);
+        updateEyebrowControls();
+    });
+
+    document.getElementById('unequip-eyebrows-toggle').addEventListener('change', (e) => {
+        toggleEyebrowUnequip(e.target.checked);
+    });
+
+    // Listens for the Skin Tone slider moving
+    document.getElementById("skin-tone-slider").addEventListener("input", (e) => {
+        charState.colors["base"] = getInterpolatedSkinTone(e.target.value);
+        renderSkin();
+    });
+
+    // Left panel displacement sliders
+    document.getElementById('left-slider-mouth').addEventListener('input', (e) => {
+        charState.offsets['mouth'] = parseInt(e.target.value);
+        renderSkin();
+        updateEquippedListUI();
+    });
+
+    renderEyeGroups();
+    renderSkin();
+    updateEquippedListUI();
+    updateAccessoryPickers();
+    syncEyelashUI();
+
+    // Panel Resizing Logic
+    let isResizingLeft = false;
+    let isResizingRight = false;
+    let startX = 0;
+    let startWidthLeft = 0;
+    let startWidthRight = 0;
+
+    document.getElementById('left-resizer').addEventListener('mousedown', (e) => {
+        isResizingLeft = true;
+        startX = e.clientX;
+        startWidthLeft = document.getElementById('left-panel').offsetWidth;
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.getElementById('right-resizer').addEventListener('mousedown', (e) => {
+        isResizingRight = true;
+        startX = e.clientX;
+        startWidthRight = document.getElementById('right-panel').offsetWidth;
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isResizingLeft) {
+            const newWidth = startWidthLeft + (e.clientX - startX);
+            if (newWidth >= 200 && newWidth <= 500) {
+                document.getElementById('left-panel').style.width = newWidth + 'px';
+            }
+        } else if (isResizingRight) {
+            const newWidth = startWidthRight - (e.clientX - startX);
+            if (newWidth >= 200 && newWidth <= 500) {
+                document.getElementById('right-panel').style.width = newWidth + 'px';
+            }
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isResizingLeft = false;
+        isResizingRight = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+
+    // ==========================================
+    // DEV TOOL: AUTOMATED 3D ICON EXPORTER
+    // Run: generateHeadshotIcons([{file: 'slickback', focus: 'head'}, ...])
+    // Focus options: 'head', 'bodytop', 'body', 'bot', 'L arm', 'R arm'
+    // ==========================================
+    function getStudioSetupForFocus(focus) {
+        // THE PHOTO STUDIO METHOD:
+        // Keep the camera perfectly level and fixed.
+        // Move and rotate the *character* into the frame.
+        // cameraZ: Camera zoom distance (higher = further away)
+        // modelPos: [x, y, z] Shift character (negative Y moves character DOWN, bringing head UP into the frame)
+        // modelRot: [x, y, z] Rotate character (Y rotates left/right)
+        const setups = {
+            'head': {
+                cameraZ: 20,
+                modelPos: [0, -12, 0], // Move body down slightly less so head sits lower in the frame
+                modelRot: [0, -0.4, 0] // Turn slightly left
+            },
+            'bodytop': {
+                cameraZ: 29,
+                modelPos: [0, -2, 0],  // Pulls body UP, making the camera look LOWER
+                modelRot: [0, -0.7, 0] // Rotates more to the side
+            },
+            'body': {
+                cameraZ: 36,
+                modelPos: [0, 5, 0],   // Pulls body UP, making the camera look LOWER
+                modelRot: [0, -0.7, 0] // Rotates more to the side
+            },
+            'bot': {
+                cameraZ: 24,
+                modelPos: [0, 8, 0],   // Decreased to 8 (Moves the pants LOWER in the frame)
+                modelRot: [0, -0.4, 0]
+            },
+            'L arm': {
+                cameraZ: 20,
+                modelPos: [-6, -6, 0],
+                modelRot: [0, -0.8, 0]
+            },
+            'R arm': {
+                cameraZ: 20,
+                modelPos: [6, -6, 0],
+                modelRot: [0, 0.8, 0]
+            }
+        };
+        return setups[focus] || setups['head'];
+    }
+
+    async function generateHeadshotIcons(itemsArray = []) {
+        console.log("Starting 3D Icon Generator...");
+
+        // Loop through requested items
+        for (let item of itemsArray) {
+            const focus = item.focus || 'head';
+            const setup = getStudioSetupForFocus(focus);
+
+            // Render the skin layers to a 2D canvas
+            let canvas = document.createElement("canvas"); 
+            canvas.width = 64; canvas.height = 64; 
+            let ctx = canvas.getContext("2d");
+
+            // Draw Base Male, default 2x2 Eyes, and Eyebrows
+            await drawTintedLayer(ctx, `base_male_mask.png`, "#f1c27d", `base_male_details.png`);
+            await drawTintedLayer(ctx, `Bottom2x2eyes_skin.png`, "#f1c27d");
+            await drawTintedLayer(ctx, `Bottom2x2eyes_mask.png`, "#3498db", `Bottom2x2eyes_detail.png`);
+            await drawTintedLayer(ctx, `2x2eyes_eyebrows_skin.png`, "#f1c27d");
+            await drawTintedLayer(ctx, `2x2eyes_eyebrows.png`, "#2c3e50");
+
+            // Draw the target item
+            let asset = item.file;
+            let maskUrl = asset.endsWith('.png') ? asset : `${asset}_mask.png`;
+            let detailUrl = asset.endsWith('.png') ? null : `${asset}_detail.png`;
+            let mask2Url = asset.endsWith('.png') ? asset.replace('.png', '_mask2.png') : `${asset}_mask2.png`;
+            
+            // Draw item in dark gray so it's clearly visible
+            await drawTintedLayer(ctx, maskUrl, "#353b48", detailUrl);
+
+            // Draw the secondary mask in a lighter gray for contrast if it exists
+            let mask2Img = await loadImageAsync(mask2Url);
+            if (mask2Img) {
+                await drawTintedLayer(ctx, mask2Url, "#7f8fa6");
+            }
+
+            // Create a hidden container for the 3D viewer
+            const hiddenDiv = document.createElement('div');
+            hiddenDiv.style.position = 'fixed';
+            hiddenDiv.style.top = '-9999px';
+            hiddenDiv.style.width = '128px';
+            hiddenDiv.style.height = '128px';
+            document.body.appendChild(hiddenDiv);
+
+            // Create SkinView3D viewer
+            const iconCanvas = document.createElement('canvas');
+            iconCanvas.width = 128;
+            iconCanvas.height = 128;
+            hiddenDiv.appendChild(iconCanvas);
+
+            const viewer = new skinview3d.SkinViewer({
+                canvas: iconCanvas,
+                width: 128,
+                height: 128,
+                alpha: true
+            });
+
+            // Disable auto-rotation and animations
+            viewer.autoRotate = false;
+            viewer.animation = null;
+
+            try {
+                // Load the skin
+                await viewer.loadSkin(canvas.toDataURL("image/png"), { model: "default" });
+            } catch (e) {
+                console.error("Failed to load skin:", e);
+            }
+
+            // Wait for skin to load
+            await new Promise(r => setTimeout(r, 100));
+
+            // 1. Lock the camera perfectly level at the center.
+            viewer.camera.position.set(0, 0, setup.cameraZ);
+            viewer.camera.rotation.set(0, 0, 0);
+            viewer.camera.updateProjectionMatrix();
+
+            // 2. Move and rotate the character into the frame.
+            if (viewer.playerObject) {
+                viewer.playerObject.position.set(...setup.modelPos);
+                viewer.playerObject.rotation.set(...setup.modelRot);
+            }
+
+            // Wait for WebGL to process the movement
+            await new Promise(r => setTimeout(r, 100));
+
+            // Force a render
+            viewer.render();
+            await new Promise(r => setTimeout(r, 50));
+
+            // Capture the rendered image
+            const dataUrl = iconCanvas.toDataURL("image/png");
+            const imgElement = document.createElement('img');
+            await new Promise(resolve => {
+                imgElement.onload = resolve;
+                imgElement.src = dataUrl;
+            });
+
+            // Crop to center 100x100
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = 100;
+            croppedCanvas.height = 100;
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCtx.imageSmoothingEnabled = false;
+            croppedCtx.drawImage(imgElement, 14, 14, 100, 100, 0, 0, 100, 100);
+
+            // Download the icon
+            croppedCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `icon_${item.file.replace('.png', '')}.png`;
+                link.click();
+                URL.revokeObjectURL(url);
+            });
+
+            console.log(`Generated: icon_${item.file.replace('.png', '')}.png (Focus: ${focus})`);
+
+            // Cleanup
+            viewer.dispose();
+            document.body.removeChild(hiddenDiv);
+        }
+
+        console.log("Icon generation complete!");
+    }
+
+    // ==========================================
+    // COMPREHENSIVE ICON GENERATION COMMAND
+    // Copy and paste this into the browser console to generate all icons at once:
+    // ==========================================
+    /*
+    generateHeadshotIcons([
+        // Hair items (head focus)
+        {file: 'slickback', focus: 'head'},
+        {file: 'sidepart.png', focus: 'head'},
+        {file: 'curly', focus: 'head'},
+        {file: 'angelhair', focus: 'head'},
+        {file: 'leonsidepart', focus: 'head'},
+        
+        // Head accessories (head focus)
+        {file: 'glasses', focus: 'head'},
+        {file: 'hood_mask.png', focus: 'head'},
+        {file: 'blacksmithgoggles.png', focus: 'head'},
+        {file: 'flygoggles.png', focus: 'head'},
+        {file: 'headband.png', focus: 'head'},
+        {file: 'scar', focus: 'head'},
+        {file: 'bigscar', focus: 'head'},
+        {file: 'scar2', focus: 'head'},
+        {file: 'tiara', focus: 'head'},
+        
+        // Shirt accessories (bodytop focus)
+        {file: 'tie', focus: 'bodytop'},
+        {file: 'vest_mask.png', focus: 'bodytop'},
+        {file: 'leonshirt', focus: 'bodytop'},
+        
+        // Full body items (body focus)
+        {file: 'fullbody_outfit', focus: 'body'},
+        {file: 'angelrobe', focus: 'body'},
+        
+        // Leg accessories (bot focus)
+        {file: 'boots', focus: 'bot'},
+        {file: 'pants_stripe', focus: 'bot'},
+        {file: 'leonpants', focus: 'bot'},
+        
+        // Arm items
+        {file: 'sleeve_L', focus: 'L arm'},
+        {file: 'sleeve_R', focus: 'R arm'}
+    ]);
+    */
+</script>
+</body>
+</html>
